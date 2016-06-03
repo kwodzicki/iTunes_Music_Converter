@@ -188,6 +188,13 @@ def iTunes_music_converter(dest_dir=None, track_id=None, bit_rate=None, codec=No
 	for track in track_id:
 		if ('audio file' in all_info['Tracks'][track]['Kind']):
 			info        = all_info['Tracks'][track];                                  # Get the information about the track in unicode format
+			if (info['Track Type'].upper() == 'REMOTE'):
+				if (verbose is not False):
+					tmp = info['Artist']+'/'+info['Album']+'/'+info['Name'];              # If verbose is set, build an Artist/Album/Track path
+					print '{:.70}'.format(tmp);                                           # Print the path
+					print '    Remote file (i.e., iCloud)... Skipping!';                  # Print it is being skipped
+				time.sleep(0.5);                                                        # Sleep for 1/2 second
+				continue;                                                               # Skip to next iteration
 			source      = unquote(info['Location']);                                  # Get the source of the track escaping HTML. The returned string is utf-8 encoded
 			destination = source.replace(music_folder, dest_dir);                     # Set the destination source
 			source      = source.replace(prefix, '');                                 # Replace the weird source prefix on the file

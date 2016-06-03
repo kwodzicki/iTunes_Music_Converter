@@ -29,7 +29,7 @@ def getImageInfo(file):
 	# handle GIFs
 	if (size >= 10) and data[:6] in ('GIF87a', 'GIF89a'):
 			# Check to see if content_type is correct
-			w, h = unpack("<HH", data[6:10]);
+			w, h = struct.unpack("<HH", data[6:10]);
 			info['type']   = 'image/gif'.encode('ascii');
 			info['width']  = int( (struct.unpack("<H", data[6: 8]))[0] );
 			info['height'] = int( (struct.unpack("<H", data[8:10]))[0] );

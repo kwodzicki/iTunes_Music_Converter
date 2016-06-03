@@ -68,7 +68,7 @@ def parse_release( release ):
 	return data;
 	
 def get_album_art(artist, album, file, year = None, lang = None, tracks = None, \
-                  quality = None, format = None, status = None):
+                  quality = None, format = None, status = None, verbose = False):
 #+
 # Name:
 #   get_album_art
@@ -118,6 +118,7 @@ def get_album_art(artist, album, file, year = None, lang = None, tracks = None, 
 		for release in result['release-list']:
 			data = parse_release( release );
 			if data is None: continue;                                                # If vital information not present in release, the skip
+			if (verbose is True): print data;                                         # Print data IF verbose
 			if (data['status'] == status.upper()) and (data['artist'] == artist.upper()):
 				if (data['album'] not in album.upper()): continue;
 				if (data['disambig'] is not None):
@@ -132,6 +133,7 @@ def get_album_art(artist, album, file, year = None, lang = None, tracks = None, 
 					if (to_unicode(lang).upper() != data['lang']): continue;              # If user input year and that does not match the year of the release, skip
 				id   = release['id'];                                                   # Get the MusicBrainz ID for the album
 				info = MB.get_release_by_id( id )['release'];
+				if (verbose is True): print info;                                       # Print info IF verbose
 				if (info['cover-art-archive']['front'] == 'true'):
 					f = open(file, 'w');                                                  # IF there is front cover art for the album, open local file
 					f.write( MB.caa.get_image(id, 'front') );
@@ -171,7 +173,8 @@ if __name__ == "__main__":
 	                            tracks  = args.tracks, \
                               quality = args.quality, \
                               format  = args.format, \
-                              status  = args.status); # Call the function to write the tags
+                              status  = args.status, \
+                              verbose = args.verbose); # Call the function to write the tags
 	if (return_code == 2):
 		print 'Error getting release information!';
 	if (return_code == 1):
