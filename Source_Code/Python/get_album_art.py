@@ -60,11 +60,10 @@ def parse_release( release ):
 		data['year'] = int(tmp['date'][:4]) if ('date' in tmp) else None;
 	else:
 		data['year'] = None;
+	data['lang'] = None;
 	if ('text-representation' in release):
 		if ('language' in release['text-representation']):
 			data['lang'] = to_unicode(release['text-representation']['language']).upper();
-		else:
-			data['lang'] = None;
 	return data;
 	
 def get_album_art(artist, album, file, year = None, lang = None, tracks = None, \
