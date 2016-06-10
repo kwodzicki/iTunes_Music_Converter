@@ -92,7 +92,9 @@ def get_album_art(artist, album, file, year = None, lang = None, tracks = None, 
 #-
 	import sys, os;
 	import musicbrainzngs as MB;
+	from subprocess import call
 	from to_unicode import to_unicode
+	from flac_tags.extras.getImageInfo import getImageInfo;                       # Import the get image info function
 	MB.set_useragent("iTunes_Convert_KRW", "1.0");                                # Set the user of the MusicBrainz API
 	MB.set_rate_limit(limit_or_interval=False);                                   # Set the limit interval to false, i.e., no limit
 	
@@ -110,7 +112,8 @@ def get_album_art(artist, album, file, year = None, lang = None, tracks = None, 
 	except:
 		return 2;
 	result = to_unicode(result)
-	importance = ['format', 'year', 'tracks', 'lang'];                   # This sets the importance of given inputs. If no artwork is found, then these are set to None one by one in an attempt to find artwork
+	importance = ['format', 'year', 'tracks', 'lang'];                            # This sets the importance of given inputs. If no artwork is found, then these are set to None one by one in an attempt to find artwork
+	release_id = None;                                                            # Set release_id to None
 	for i in range(-1,len(importance)):
 		if (i >= 0):
 			exec(importance[i] + " = None");                                          # Set a given 'importance' variable to None.
@@ -130,14 +133,27 @@ def get_album_art(artist, album, file, year = None, lang = None, tracks = None, 
 					if (int(year) != data['year']): continue;                             # If user input year and that does not match the year of the release, skip
 				if (lang is not None):
 					if (to_unicode(lang).upper() != data['lang']): continue;              # If user input year and that does not match the year of the release, skip
-				id   = release['id'];                                                   # Get the MusicBrainz ID for the album
-				info = MB.get_release_by_id( id )['release'];
+				release_id   = release['id'];                                           # Get the MusicBrainz ID for the album
+				release_info = MB.get_release_by_id( release_id )['release'];           # Get information about the relase
 				if (verbose is True): print info;                                       # Print info IF verbose
-				if (info['cover-art-archive']['front'] == 'true'):
-					f = open(file, 'w');                                                  # IF there is front cover art for the album, open local file
-					f.write( MB.caa.get_image(id, 'front') );
-					f.close();                                                            # Close the local file
+				if (release_info['cover-art-archive']['front'] == 'true'):
+					image = MB.caa.get_image(release_id, 'front');                        # Download the image
+					info  = getImageInfo(data = image);                                   # Get information about the image
+					if ('jpeg' in info['type']):
+						f = open(file, 'w');                                                # IF there is front cover art for the album, open local file
+						f.write( image );                                                   # Write the image to the file
+						f.close();                                                          # Close the local file
+					else:
+						tmp_file = '.'.join(file.split('.')[:-1])+'.'+info['ext'];          # Set up a file name to save to if image is NOT jpeg
+						f = open(tmp_file, 'w');                                            # Open the file for writing
+						f.write( image );                                                   # Write the data to the file
+						f.close();                                                          # Close the file
+						cmd = ['sips','-s','format','jpeg',tmp_file,'--out',file];          # Set the command to run
+						with open(os.devnull, 'w') as devnull:
+							return_code = call(cmd ,stdout=devnull);                          # Run the sips command and pipe output to /dev/null
+						os.remove(tmp_file);                                                # Delete the file that is NOT jpeg
 					return 0;                                                             # Return 0 when downloaded
+	open(file, 'a').close();                                                      # IF the function gets to this point, NO artwork was downloaded SO create empty file. 'a' option used so file NOT overwritten IF it exists
 	return 1;                                                                     # Return 1 if no match found 
 
 # Set up command line arguments for the function

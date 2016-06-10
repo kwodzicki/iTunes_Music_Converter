@@ -21,7 +21,10 @@ def add_PICTURE(picture_file, parsed_data, picture_type = None):
 	from flac_tags.extras.getImageInfo import getImageInfo;                       # Import the get image info function
 	from flac_tags.extras.picture_desc import picture_desc;                       # Import function to return description of picture
 	
-	img_info = getImageInfo (picture_file);                                       # Get information about the image
+	img_info = getImageInfo(file = picture_file);                                 # Get information about the image
+	if (len(img_info) == 0):
+# 		print 'Error getting image information...Skipping!';                        # Inform of error
+		return parsed_data;                                                         # Return parsed data, i.e., skip adding the image
 	if (img_info['type'] == 'image/gif'):
 		print 'GIF images are NOT currently supported! Returning...';               # Print message if picture is of type GIF!
 		return parsed_data;                                                         # Return data without adding image
