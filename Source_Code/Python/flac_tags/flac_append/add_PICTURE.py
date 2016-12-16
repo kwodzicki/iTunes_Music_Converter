@@ -20,7 +20,7 @@ def add_PICTURE(picture_file, parsed_data, picture_type = None):
 	from struct import pack;                                                      # Import pack function from struct module
 	from flac_tags.extras.getImageInfo import getImageInfo;                       # Import the get image info function
 	from flac_tags.extras.picture_desc import picture_desc;                       # Import function to return description of picture
-	
+# 	print picture_file;
 	img_info = getImageInfo(file = picture_file);                                 # Get information about the image
 	if (len(img_info) == 0):
 # 		print 'Error getting image information...Skipping!';                        # Inform of error

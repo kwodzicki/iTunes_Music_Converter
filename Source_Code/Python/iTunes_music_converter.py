@@ -35,6 +35,9 @@ def mp3_tags( info ):
 #   None.
 # Author and History:
 #   Kyle R. Wodzicki     Created 24 May 2016
+#
+#   Modified 10 Dec. 2016
+#     Fixed issue that caused disc numbers to not be written.
 #-
 	import urllib2;
 	meta = [];                                                                    # Initialize list
@@ -52,11 +55,11 @@ def mp3_tags( info ):
 		meta.extend(['-metadata', 'genre='        + info['Genre'].encode('utf-8')]);        # Add the genre to the command
 	if ('Year' in info):
 		meta.extend(['-metadata', 'year='         + str(info['Year'])]);            # Add the year to the command
-	if ('Disk Number' in info):
-		tmp = str(info['Disk Number']).encode('utf-8');                             # Add the disk number to the command
-		if ('Disk Count' in info):
-			tmp = tmp + '/' + str(info['Disk Count']).encode('utf-8');                # Add the number of disks to the command
-		meta.extend(['-metadata', 'disk='+tmp] );
+	if ('Disc Number' in info):
+		tmp = str(info['Disc Number']).encode('utf-8');                             # Add the disk number to the command
+		if ('Disc Count' in info):
+			tmp = tmp + '/' + str(info['Disc Count']).encode('utf-8');                # Add the number of disks to the command
+		meta.extend(['-metadata', 'disc='+tmp] );
 	if ('Track Number' in info):
 		tmp = str(info['Track Number']).encode('utf-8');                            # Add the track number to the command
 		if ('Track Count' in info):
@@ -83,26 +86,29 @@ def flac_tags( info ):
 #   None.
 # Author and History:
 #   Kyle R. Wodzicki     Created 24 May 2016
+#
+#   Modified 10 Dec. 2016
+#     Fixed issue that caused disc numbers to not be written.
 #-
 	import urllib2;
 	meta = {};                                                                    # Initialize dictionary
-	if ('Name' in info): meta['title']  = info['Name'].encode('utf-8');                                      # Append the track name to the dictionary
+	if ('Name' in info): meta['title']  = info['Name'].encode('utf-8');           # Append the track name to the dictionary
 	if ('Artist' in info): 
-		meta['artist'] = info['Artist'].encode('utf-8');                                    # Add the artist to the dictionary
+		meta['artist'] = info['Artist'].encode('utf-8');                            # Add the artist to the dictionary
 	if ('Album Artist' in info): 
-		meta['albumartist'] = info['Album Artist'].encode('utf-8');                         # Add the album artist to the dictionary
+		meta['albumartist'] = info['Album Artist'].encode('utf-8');                 # Add the album artist to the dictionary
 	if ('Album' in info):
-		meta['album'] = info['Album'].encode('utf-8');                                      # Add the album to the dictionary
+		meta['album'] = info['Album'].encode('utf-8');                              # Add the album to the dictionary
 	if ('Composer' in info):
-		meta['composer'] = info['Composer'].encode('utf-8');                                # Add the composer to the command     
+		meta['composer'] = info['Composer'].encode('utf-8');                        # Add the composer to the command     
 	if ('Genre' in info):
-		meta['genre'] = info['Genre'].encode('utf-8');                                      # Add the genre to the dictionary
+		meta['genre'] = info['Genre'].encode('utf-8');                              # Add the genre to the dictionary
 	if ('Year' in info):
 		meta['year'] = str(info['Year']);                                           # Add the year to the dictionary
-	if ('Disk Number' in info):
-		meta['disknumber'] = str(info['Disk Number']).encode('utf-8');              # Add the disk number to the dictionary
-	if ('Disk Count' in info):
-		meta['disktotal'] = str(info['Disk Count']).encode('utf-8'); 
+	if ('Disc Number' in info):
+		meta['discnumber'] = str(info['Disc Number']).encode('utf-8');              # Add the disk number to the dictionary
+	if ('Disc Count' in info):
+		meta['disctotal'] = str(info['Disc Count']).encode('utf-8'); 
 	if ('Track Number' in info):
 		meta['tracknumber'] = str(info['Track Number']).encode('utf-8');            # Add the track number to the dictionary
 	if ('Track Count' in info):
@@ -135,6 +141,10 @@ def iTunes_music_converter(dest_dir=None, track_id=None, bit_rate=None, codec=No
 #   verbose  : Increase the verbosity
 # Author and History:
 #   Kyle R. Wodzicki     Created 24 May 2016
+#
+#     Modified 11 Nov. 2016 By Kyle R. Wodzicki
+#       Changed when initial timing for each track is set
+#       Added a total timer for entire process
 #-
 	import os, time, sys;
 	from plistlib      import readPlist;	                                        # Import plistRead
@@ -144,7 +154,9 @@ def iTunes_music_converter(dest_dir=None, track_id=None, bit_rate=None, codec=No
 	from flac_tags     import flac_tagger;	                                      # Import tagger for flac files
 	from get_album_art import get_album_art;	                                    # Import get_album_art function
 	home_dir = os.getenv("HOME");                                                 # Set path to users home directory
-	if (verbose is True): Print = sys.stdout.write;                               # Define a print command
+	if (verbose is True):
+		Print = sys.stdout.write;                              											# Define a print command
+		t00 = time.time();                              														# Time when program first starts
 	
 	# Set up some defaults if nothing was input!
 	if (dest_dir is None):
@@ -153,6 +165,9 @@ def iTunes_music_converter(dest_dir=None, track_id=None, bit_rate=None, codec=No
 		print '    ', dest_dir;
 	elif (dest_dir[-1] != '/'):
 		dest_dir = dest_dir + '/';                                                  # Append forward slash to the end of the directory if one is not there
+		if (verbose is True): 
+			print 'Ouput directory is:';                                              # Some verbose output
+			print '    ', dest_dir;
 	if (bit_rate is None): bit_rate = '320k';                                     # Set the default bit rate
 	if (codec    is None): codec    = 'mp3';                                      # Set the default codec to mp3
 	codec = codec.lower();                                                        # ensure that the codec is lower case
@@ -172,7 +187,7 @@ def iTunes_music_converter(dest_dir=None, track_id=None, bit_rate=None, codec=No
 	itunes_xml   = home_dir+"/Music/iTunes/iTunes Music Library.xml";             # Set the path to the iTunes XML file; assumed to be in users Music/iTunes directory
 	all_info     = to_unicode( readPlist(itunes_xml) );                           # Get the top of the XML tree as unicode text
 	music_folder = all_info['Music Folder'];                                      # Get the path to the iTunes music folder
-	
+
 	all_ids  = [int(i) for i in all_info['Tracks'].keys() if 'audio file' in all_info['Tracks'][i]['Kind']]; # Get the track_id of every track in the iTunes XML library as an integer
 	if (track_id is None):
 		track_id = [str(i) for i in all_ids];                                       # If the track_id variable is NOT set, convert all tracks in iTunes library
@@ -180,17 +195,22 @@ def iTunes_music_converter(dest_dir=None, track_id=None, bit_rate=None, codec=No
 		track_id = [i for i in track_id.split() if int(i) in all_ids];              # Parse track IDs input into function checking that they are in the all_ids list
 	if (len(track_id) == 0): return 1;                                            # If track_id has zero length, then nothing to convert, return 1
 	cnt, nTrack = 0, len(track_id);                                               # Initialize a counter to 0 and get the number of track IDs in the list
+		
 	for track in track_id:
 		cnt+=1;                                                                     # Increment the track counter
+		if (verbose is True): t0 = time.time();                                     # Get time the command was started
 		info = all_info['Tracks'][track];                                           # Get the information about the track in unicode format
 		for key in info: 
 			if (key != 'Location'): info[key] = to_unicode(info[key]);                # Convert all info to unicode. This is done now due to issues with converting the file location to unicode and escaping the HTML
 		if (verbose is True):
 			tmp = "";
-			if ('Artist'       in info): tmp+= info['Artist']+'/'
-			if ('Album'        in info): tmp+= info['Album'] +'/'
+			if ('Album Artist' in info): 
+				tmp+= info['Album Artist']+'/';
+			elif ('Artist'     in info): 
+				tmp+= info['Artist']+'/';
+			if ('Album'        in info): tmp+= info['Album'] +'/';
 			if ('Track Number' in info): tmp+= '{:02} '.format(info['Track Number']);
-			if ('Name'         in info): tmp+= info['Name']
+			if ('Name'         in info): tmp+= info['Name'];
 			Print(u'{:63.61}#{:07}/{:07}\n'.format(tmp,cnt,nTrack));                  # If verbose is set, build an Artist/Album/Track path
 		if (info['Track Type'].upper() == 'REMOTE'):
 			if (verbose is True): print '    Remote file (i.e., iCloud)... Skipping!';# Print it is being skipped
@@ -212,7 +232,7 @@ def iTunes_music_converter(dest_dir=None, track_id=None, bit_rate=None, codec=No
 		if os.path.isfile(destination): 
 			if (verbose is True): print '    File EXISTS on receiver!';               # Some verbose output
 			continue;                                                                 # If the destination file already exists, continue past it
-		
+
 		if not os.path.isdir(os.path.dirname(destination)):
 			os.makedirs(os.path.dirname(destination));                                # If the destination directory does NOT exist, create it
 		if (verbose is True): 
@@ -221,13 +241,17 @@ def iTunes_music_converter(dest_dir=None, track_id=None, bit_rate=None, codec=No
 		cover = os.path.dirname(destination)+'/coverart.jpeg';                      # Set path to cover art file
 		if os.path.isfile(cover):
 			cover_code = 0 if os.stat(cover).st_size > 0 else 1;                      # Set cover code to zero if cover art file exists
-		elif ('Artist' in info) and ('Album' in info):
-			artist = info['Artist'];                                                  # Attempt to download album art work for the album IF the 
+		elif ('Artist' in info or 'Album Artist' in info) and ('Album' in info):
+			if ('Album Artist' in info): 
+				artist = info['Album Artist'];				                                  # Attempt to download album art work for the album IF the 
+			elif ('Artist'     in info): 
+				artist = info['Artist'];                                                # Attempt to download album art work for the album IF the 
 			album  = info['Album'];
 			y = info['Year'] if 'Year' in info else None;                             # Set y variable to year of album release
 			t = info['Track Count'] if 'Track Count' in info else None;               # Set t variable to number of tracks on the album
-			cover_code = get_album_art(artist,album,cover,year=y,tracks=t);           # Attempt to download the cover art
+			cover_code = get_album_art(artist,album,cover,year=y,tracks=t);           # Attempt to download the cover art                                                               # If the download is successful then break.
 		else:
+			open(cover, 'a').close();                                                 # Empty file created so do not attempt to download on subsequent runs.
 			cover_code = 1;                                                           # If art work file does NOT exist and there is NOT enough info to try to download, set cover_code to 1
 		#=== Some verbose output
 		if (verbose is True):
@@ -258,7 +282,6 @@ def iTunes_music_converter(dest_dir=None, track_id=None, bit_rate=None, codec=No
 
 		cmd.extend(['-map_metadata', '-1']);                                        # Don't let ffmpeg map the metadata; it is set manually
 		cmd.append( destination );                                                  # Add the output file path to the command
-		t0 = time.time();                                                           # Get time the command was started
 		return_code, nTry = 1, 0
 		while (return_code != 0) and (nTry < 3):
 			return_code = call(cmd);                                                  # Run the command
@@ -280,6 +303,7 @@ def iTunes_music_converter(dest_dir=None, track_id=None, bit_rate=None, codec=No
 			if (verbose is True): 
 				Print('{:.>13}{:05.1f}{:1}\n'.format('Finised in: ',time.time()-t0,'s'));
 				sys.stdout.flush();                                                     # Flust data to screen
+	if (verbose is True): print 'Elapsed: ',round((time.time()-t00)/60),'min';    # Print elapsed time if verbose is true
 ################################################################################
 # Set up command line arguments for the function
 if __name__ == "__main__":

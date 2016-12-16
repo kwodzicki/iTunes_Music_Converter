@@ -39,6 +39,12 @@
 #   Kyle R. Wodzicki     Created 22 May 2016
 #
 # Note that only one (1) picture is currently supported!
+#
+#   Modified 18 Nov. 2016 by Kyle R. Wodzicki
+#     Fixed an issue with code that was ment to support multiple images in 
+#     the future. The file paths were to be separated by commas, however this
+#     created an issue for file paths that had commas in them. The code
+#     has been commented out and will (hopefully) be implemented in the future.
 #-
 
 
@@ -110,18 +116,21 @@ def flac_tagger(file, key_dict = None, **kargs):
 
 		if 'picture' in kargs:
 			if (kargs['picture'] is not None):
-				pics = kargs['picture'].split(',');                                     # Get list of pictures
-				if (len(pics) > 1):
-					print 'Currently only supports one (1) image. Only using first!';
-				if 'picturetype' not in kargs:
-					print 'No picture type defined, assuming front cover art!'
-					pictype = '3';                                                        # Set picture art type to cover (front)
-				elif kargs['picturetype'] is None:
-					pictype = '3';                                                        # If picture type exists in kargs but is None, set to cover (front)
-				else:
-					pictype = kargs['picturetype'].split(',');                            # Set picture art type to user defined
-					pictype = pictype[0];                                                 # IF more then one, use only first
-				data = ft.flac_append.add_PICTURE(pics[0], data, picture_type=pictype); # Update the picture data in parsed data
+				pics = kargs['picture'];
+				pictype = kargs['picturetype'];                                         # Set picture art type to user defined
+# 				pics = kargs['picture'].split(',');                                   # Get list of pictures# 
+# 				if (len(pics) > 1):
+# 					print 'Currently only supports one (1) image. Only using first!';
+# 				if 'picturetype' not in kargs:
+# 					print 'No picture type defined, assuming front cover art!'
+# 					pictype = '3';                                                        # Set picture art type to cover (front)
+# 				elif kargs['picturetype'] is None:
+# 					pictype = '3';                                                        # If picture type exists in kargs but is None, set to cover (front)
+# 				else:
+# 					pictype = kargs['picturetype'].split(',');                            # Set picture art type to user defined
+# 					pictype = pictype[0];                                                 # IF more then one, use only first
+# 				data = ft.flac_append.add_PICTURE(pics[0], data, picture_type=pictype); # Update the picture data in parsed data
+				data = ft.flac_append.add_PICTURE(pics, data, picture_type=pictype);    # Update the picture data in parsed data
 		ft.write_flac( data, file );                                                # Write data to the file
 	return 0;
 	
