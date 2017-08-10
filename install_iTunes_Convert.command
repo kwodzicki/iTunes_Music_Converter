@@ -36,7 +36,6 @@ source_dir="$dir/Source_Code"
 
 echo $dir
 echo $source_dir
-exit 0
 
 # Download the musicbrainz python code and place it in the python directory
 mb_py="$source_dir/Python/musicbrainz"

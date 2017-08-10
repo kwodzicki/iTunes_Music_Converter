@@ -148,7 +148,7 @@ def iTunes_music_converter(dest_dir=None, track_id=None, bit_rate=None, codec=No
 #-
 	import os, time, sys;
 	from plistlib      import readPlist;	                                        # Import plistRead
-	from urllib2       import unquote as unquote;                                 # Import unquote from urllib2
+	from urllib2       import unquote;                                            # Import unquote from urllib2
 	from to_unicode    import to_unicode;	                                        # Import to_unicode function for consistency when working with strings
 	from subprocess    import call, check_output;	                                # Import function to call command line program
 	from flac_tags     import flac_tagger;	                                      # Import tagger for flac files
@@ -292,7 +292,9 @@ def iTunes_music_converter(dest_dir=None, track_id=None, bit_rate=None, codec=No
 			if (cover_code == 0):
 				key_dict['picture']     = cover;                                        # If cover art was downloaded, append the file path to the falc_tagger keywords dictionary
 				key_dict['picturetype'] = '3';                                          # If cover art was downloaded, append the image type to the falc_tagger keywords dictionary
-			return_code = flac_tagger(destination, key_dict=key_dict);                # If return code was 0 and the codec was flac, then run flac tagger to add tags and cover art
+			x = flac_tagger(destination, key_dict=key_dict);
+			x.write();
+			return_code = x.status;                                                   # If return code was 0 and the codec was flac, then run flac tagger to add tags and cover art
 		if (return_code != 0):
 			if (verbose is True):
 				Print('{:.>19}\n'.format('Failed!'));
