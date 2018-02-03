@@ -7,7 +7,7 @@ your iTunes library to MP3 and FLAC files.
 
 * Compatible with Python3
 * Will add all metadata available in the iTunes XML library using [mutagen][mutagen]
-* Will try to download cover art using the [Musicbrainz][Musicbrainz NGS]
+* Will try to download cover art using [Musicbrainz][Musicbrainz NGS]
 
 ## Installation
 
