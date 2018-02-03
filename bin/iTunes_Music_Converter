@@ -3,17 +3,13 @@
 import argparse;
 from iTunes_Music_Converter import iTunes_Music_Converter;
 
-parser = argparse.ArgumentParser(description="Convert iTunes Music Library");   # Set the description of the script to be printed in the help doc, i.e., ./script -h
-parser.add_argument("-d", "--dir", metavar='directory',   type=str, \  
-	help="Destination. Default is ~/Music/iTunes_Convert.");                      # Set an option of inputing of a file path. No dictionary can be passed via the command line
-parser.add_argument("-t", "--track", metavar='track',       type=str, \  
-	help="iTunes track ID. If NOT set, all songs converted.");                    # Set an option of inputing of a file path. No dictionary can be passed via the command line
-parser.add_argument("-c", "--codec", metavar='audio codec', type=str, \  
-	help="Codec to use: mp3 OR flac. Default is mp3.");                           # Set an option of inputing of a file path. No dictionary can be passed via the command line
-parser.add_argument("-b", "--bitrate", metavar='bit rate',    type=str, \  
-	help="MP3 bit rate. Default is 320k.");                                       # Set an option of inputing of a file path. No dictionary can be passed via the command line
-parser.add_argument("-v", "--verbose", action='store_true', \  
-	help="increase verbosity")  
+parser = argparse.ArgumentParser(description="iTunes Music Converter");   # Set the description of the script to be printed in the help doc, i.e., ./script -h
+
+parser.add_argument("-d", "--dir",     metavar='directory',   type=str, help="Destination. Default is ~/Music/iTunes_Convert.");  # Set an option of inputing of a file path. No dictionary can be passed via the command line
+parser.add_argument("-t", "--track",   metavar='track',       type=str, help="iTunes track ID. If NOT set, all songs converted.");# Set an option of inputing of a file path. No dictionary can be passed via the command line
+parser.add_argument("-c", "--codec",   metavar='audio codec', type=str, help="Codec to use: mp3 OR flac. Default is mp3.");       # Set an option of inputing of a file path. No dictionary can be passed via the command line
+parser.add_argument("-b", "--bitrate", metavar='bit rate',    type=str, help="MP3 bit rate. Default is 320k.");                   # Set an option of inputing of a file path. No dictionary can be passed via the command line
+parser.add_argument("-v", "--verbose", action='store_true',   help="increase verbosity")  
 args = parser.parse_args();                                                     # Parse the args
 
 inst = iTunes_Music_Converter(
