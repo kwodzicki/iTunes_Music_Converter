@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 # Two functions used to download album artwork
+import sys, os, io, time;
+import musicbrainzngs as MB;
+from subprocess import call
+# from to_unicode import to_unicode
+from PIL import Image;
+
+to_unicode = lambda x: x;
 def parse_release( release ):
 #+
 # Name:
@@ -25,7 +32,6 @@ def parse_release( release ):
 #     Modified 18 Nov. 2016 by Kyle R. Wodzicki
 #       Added removal of ellipsis to 'rm_special' function.
 #-
-	from to_unicode import to_unicode
 	def rm_special(in_var):
 		in_var = in_var.replace(u"\u2018", "'").replace(u"\u2019", "'");            # Remove fancy single quotes; replace with standard single quote
 		in_var = in_var.replace(u"\u201c",'"').replace(u"\u201d", '"');             # Remove fancy double quotes; replace with standard double quote
@@ -116,11 +122,7 @@ def get_album_art(artist, album, file, year = None, lang = None, tracks = None, 
 #       Issues may arise if the name of an artist somehow fits into the name
 #       of the artist of interest.
 #-
-	import sys, os, time;
-	import musicbrainzngs as MB;
-	from subprocess import call
-	from to_unicode import to_unicode
-	from flac_tags.extras.getImageInfo import getImageInfo;                       # Import the get image info function
+# 	from flac_tags.extras.getImageInfo import getImageInfo;                       # Import the get image info function
 	
 	open(file, 'a').close();                                                      # Empty file created so do not attempt to download on subsequent runs. THIS FILE IS OVERWRITTEN IF ARTWORK FOUND!!!!
 	
@@ -156,7 +158,7 @@ def get_album_art(artist, album, file, year = None, lang = None, tracks = None, 
 # 			print release;
 			data = parse_release( release );
 			if data is None: continue;                                                # If vital information not present in release, the skip
-			if (verbose is True): print data;                                         # Print data IF verbose
+			if (verbose is True): print( data );                                         # Print data IF verbose
 # 			print data['artist'], artist.upper();
 # 			print data['album'], album.upper();
 # 			print '';
@@ -190,7 +192,7 @@ def get_album_art(artist, album, file, year = None, lang = None, tracks = None, 
 						break;
 				if attempt == 3: return 3;                                              # If MusicBrainz search fails three times, return 2
 				release_info = MB.get_release_by_id( release_id )['release'];           # Get information about the relase
-				if (verbose is True): print release_info;
+				if (verbose is True): print( release_info );
 				if (release_info['cover-art-archive']['front'] == 'true'):
 					attempt = 0;                                                          # Set attempt number for album art
 					while attempt < 3:
@@ -202,15 +204,21 @@ def get_album_art(artist, album, file, year = None, lang = None, tracks = None, 
 						else:
 							break;
 					if attempt == 3: return 4;                                            # If MusicBrainz search fails three times, return 2
-					info  = getImageInfo(data = image);                                   # Get information about the image
-					tmp_file = '.'.join(file.split('.')[:-1])+'tmp.'+info['ext'];         # Set up a file name to save to if image is NOT jpeg
-					f = open(tmp_file, 'w');                                              # Open the file for writing
-					f.write( image );                                                     # Write the data to the file
-					f.close();                                                            # Close the file
-					cmd = ['sips','-s','format','jpeg','-Z','500',tmp_file,'--out',file]; # Set the command to run; output file will be jpeg format and how height OR width no greater that 500 pixels
-					with open(os.devnull, 'w') as devnull:
-						return_code = call(cmd, stdout=devnull, stderr=devnull);            # Run the sips command and pipe output to /dev/null
-					os.remove(tmp_file);                                                  # Delete the file that is NOT jpeg
+					im = Image.open( io.BytesIO( image ) );                               # Open up a PIL image
+					if 'JPEG' not in im.format.upper():                                   # If the image is not JPEG
+						im = im.convert('RGB');                                             # Convert to jpeg
+					if im.size[0] > 500 or im.size[1] > 500:                              # If the image is too large
+						im = im.resize( (500,500,) );                                       # Resize it
+					im.save(file, quality=80);					
+# 					info  = getImageInfo(data = image);                                   # Get information about the image
+# 					tmp_file = '.'.join(file.split('.')[:-1])+'tmp.'+info['ext'];         # Set up a file name to save to if image is NOT jpeg
+# 					f = open(tmp_file, 'w');                                              # Open the file for writing
+# 					f.write( image );                                                     # Write the data to the file
+# 					f.close();                                                            # Close the file
+# 					cmd = ['sips','-s','format','jpeg','-Z','500',tmp_file,'--out',file]; # Set the command to run; output file will be jpeg format and how height OR width no greater that 500 pixels
+# 					with open(os.devnull, 'w') as devnull:
+# 						return_code = call(cmd, stdout=devnull, stderr=devnull);            # Run the sips command and pipe output to /dev/null
+# 					os.remove(tmp_file);                                                  # Delete the file that is NOT jpeg
 					return 0;
 #=== OLD CODE FOR SAVING/CONVERTING THE IMAGE. NEW CODE KEEPS FILES SMALL!!!
 # 					if ('jpeg' in info['type']):
@@ -254,7 +262,7 @@ if __name__ == "__main__":
 
 	args = parser.parse_args();                                                   # Parse the args
 	if (args.artist is None) or (args.album is None) or (args.year is None):
-		print 'Must input artist, album, and year!'
+		print( 'Must input artist, album, and year!' )
 		quit();
 	return_code = get_album_art(args.artist, args.album, args.file, \
 	                            year    = args.year, \
@@ -264,13 +272,13 @@ if __name__ == "__main__":
                               status  = args.status, \
                               verbose = args.verbose); # Call the function to write the tags
 	if (return_code == 4):
-		print 'Error getting cover art!';
+		print( 'Error getting cover art!' );
 	elif (return_code == 3):
-		print 'Error getting release information!';
+		print( 'Error getting release information!' );
 	elif (return_code == 2):
-		print 'Error searching for release information!';
+		print( 'Error searching for release information!' );
 	elif (return_code == 1):
-		print 'Failed to find artwork matching request!';
+		print( 'Failed to find artwork matching request!' );
 	else:
 		if args.verbose is True:
-			print 'Download successful!';
+			print( 'Download successful!' );

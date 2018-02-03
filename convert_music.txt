@@ -1,0 +1,49 @@
+--Set up command to source the bash profile file
+set profile to "if [ -f $HOME/.profile ]; then source $HOME/.profile; elif [ -f $HOME/.bash_profile ]; then source $HOME/.bash_profile; fi"
+
+--Check that the iTunes Library XML file exists. If it does not, tell use to set
+--option in the iTunes preferences.
+set iTunesLib to (do shell script "echo $HOME/Music/iTunes/iTunes Music Library.xml")
+tell application "Finder"
+	if not (exists iTunesLib as POSIX file) then
+		display dialog "Could not find the iTunes Library XML file. Please make sure that the 'Share iTunes Library XML with other application' options is set under iTunes Preference > Advanced and then try again."
+		error number -128
+	end if
+end tell
+
+--Get track IDs for selected files in iTunes
+tell application "iTunes"
+	if selection is not {} then --Check if something selected
+		set trackIDs to "'"
+		repeat with aTrack in (selection)
+			set trackIDs to trackIDs & (database ID of aTrack) & " "
+		end repeat
+	else
+		display dialog "No tracks selected!!!"
+		error number -128 --Quite the program
+	end if
+end tell
+
+--Prompt where to store files
+set destDir to choose folder with prompt "Choose Output Folder." default location (path to desktop folder)
+set destDir to (the quoted form of POSIX path of (destDir as alias)) --redefine
+
+--Set up the beginning part of command with path to command, destination directory, and track IDs
+set cnvtCmd to profile & "; " & "iTunes_Music_Converter" & " -d " & destDir & " -t " & trackIDs & "'"
+
+--Prompt to set the audio codec
+display dialog "Select audio codec" buttons {"FLAC", "MP3"} default button 2 with icon 1
+set codec to button returned of result --get audio codec from user input
+set cnvtCmd to cnvtCmd & " -c " & codec --Append the audio codec to the command
+
+--If the MP3 codec is to be used, set the bit rate
+if codec is "MP3" then
+	--Prompt to set MP3 quality
+	display dialog "Plese select MP3 quality." buttons {"160k", "192k", "320k"} default button 2 with icon 1
+	set bitRate to button returned of result --get bit_rate from file
+	set cnvtCmd to cnvtCmd & " -b " & " " & bitRate --Append the MP3 bit rate to the command
+end if
+
+--Run conversion/copying of selected files
+set result to do shell script cnvtCmd
+display notification "iTunes music conversion complete!" with title "convert_music" sound name "Glass"
