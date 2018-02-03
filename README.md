@@ -18,7 +18,7 @@ To install it using `pip`:
 
 ## Dependencies
 
-* [FFmpeg][handbrake] - Used for converting audio
+* [FFmpeg][ffmpeg] - Used for converting audio
 
 All other dependencies should install through `pip`.
 
@@ -26,6 +26,6 @@ All other dependencies should install through `pip`.
 
 iTunes_Music_Converter is released under the terms of the GNU GPL v3 license.
 
-[mutagne]: https://github.com/quodlibet/mutagen
+[mutagen]: https://github.com/quodlibet/mutagen
 [Musicbrainz NGS]: https://github.com/alastair/python-musicbrainzngs
 [ffmpeg]: https://www.ffmpeg.org/
