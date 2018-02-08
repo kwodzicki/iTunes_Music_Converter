@@ -29,6 +29,7 @@ from iTunes_Music_Converter.utils.get_album_art import get_album_art;	          
 from urllib.parse import unquote
 
 class Counter(object):
+	'''A cross-thread counter object'''
 	def __init__(self, lock):
 		self.val = 0
 		self.lock = lock
@@ -44,36 +45,36 @@ class Counter(object):
 			return self.val
             
 class iTunes_Music_Converter( object ):
-#+
-# Name:
-#   iTunes_Music_Converter
-# Purpose:
-#   A function to convert music files in an iTunes library to a given format.
-#   the two currently supported formats are MP3 and FLAC.
-# Inputs:
-#   None.
-# Outputs:
-#   Converted audio files.
-# Keywords:
-#   dest_dir : The top level directory to save files in. Converted files will
-#               be placed in Artist/Album/ directories within this directory.
-#               DEFAULT is to place music in iTunes_Converted directory in
-#               the users home music folder.
-#   track_id : String of iTunes track ID(s), separated by spaces, for songs to
-#               convert. DEFAULT is to convert entire library.
-#   bit_rate : Set the bit rate for conversion. This only applies when
-#               converting to MP3. MUST include 'k' in bit rate, i.e., 192k.
-#               DEFAULT is 320k.
-#   codce    : The codec to use for encoding. The two supported options are
-#               MP3 and FLAC. DEFAULT is MP3.
-#   verbose  : Increase the verbosity
-# Author and History:
-#   Kyle R. Wodzicki     Created 24 May 2016
-#
-#     Modified 11 Nov. 2016 By Kyle R. Wodzicki
-#       Changed when initial timing for each track is set
-#       Added a total timer for entire process
-#-
+	'''
+	Name:
+		iTunes_Music_Converter
+	Purpose:
+		A function to convert music files in an iTunes library to a given format.
+		the two currently supported formats are MP3 and FLAC.
+	Inputs:
+		None.
+	Outputs:
+		Converted audio files.
+	Keywords:
+		dest_dir : The top level directory to save files in. Converted files will
+								be placed in Artist/Album/ directories within this directory.
+								DEFAULT is to place music in iTunes_Converted directory in
+								the users home music folder.
+		track_id : String of iTunes track ID(s), separated by spaces, for songs to
+								convert. DEFAULT is to convert entire library.
+		bit_rate : Set the bit rate for conversion. This only applies when
+								converting to MP3. MUST include 'k' in bit rate, i.e., 192k.
+								DEFAULT is 320k.
+		codce    : The codec to use for encoding. The two supported options are
+								MP3 and FLAC. DEFAULT is MP3.
+		verbose  : Increase the verbosity
+	Author and History:
+		Kyle R. Wodzicki     Created 24 May 2016
+
+			Modified 11 Nov. 2016 By Kyle R. Wodzicki
+				Changed when initial timing for each track is set
+				Added a total timer for entire process
+	'''
 	def __init__(self, dest_dir=None, bit_rate=None, codec=None, verbose=False):
 		if not self._testFFmpeg():                                                  # Test for FFmpeg command
 			print( 'ffmpeg command NOT found! Exiting!' );                            # Print error
@@ -105,11 +106,11 @@ class iTunes_Music_Converter( object ):
 			if 'audio file' in self.itunes_data['Tracks'][i]['Kind']:                 # If a track is an audio file
 				self.all_tracks.append( i );                                            # Append the track id to the all_tracks list
 
-		self.cnt     = None;                                                        # Set cnt to None
-		self.nTrack  = None;                                                        # Set nTracks to None
-		self.nProc   = 2;                                                           # Set number of concurrent processes allowed
-		self.process = [];                                                          # Initialize list of processes
-		self.lock    = Lock();                                                      # Initialize a thread lock
+		self.cnt      = None;                                                       # Set cnt to None
+		self.nTrack   = None;                                                       # Set nTracks to None
+		self.nProc    = 2;                                                          # Set number of concurrent processes allowed
+		self.process  = [];                                                         # Initialize list of processes
+		self.lock     = Lock();                                                     # Initialize a thread lock
 	##############################################################################
 	def convert(self, track_id = None):
 		'''Function that iterates over tracks to convert them.'''
