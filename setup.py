@@ -52,7 +52,7 @@ setuptools.setup(
   url          = "https://github.com/kwodzicki/iTunes_Music_Converter",
   author       = "Kyle R. Wodzicki",
   author_email = "krwodzicki@gmail.com",
-  version      = "0.3.0",
+  version      = "0.3.1",
   packages     = setuptools.find_packages(),
   install_requires = [ 
     "musicbrainzngs", "mutagen", "Pillow", "tkinter"

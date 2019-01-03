@@ -29,7 +29,7 @@ set destDir to choose folder with prompt "Choose Output Folder." default locatio
 set destDir to (the quoted form of POSIX path of (destDir as alias)) --redefine
 
 --Set up the beginning part of command with path to command, destination directory, and track IDs
-set cnvtCmd to profile & "; " & "iTunes_Music_Converter" & " -d " & destDir & " -t " & trackIDs & "'"
+set cnvtCmd to profile & "; " & "iTunes_Music_Converter" & " -v -d " & destDir & " -t " & trackIDs & "'"
 
 --Prompt to set the audio codec
 display dialog "Select audio codec" buttons {"FLAC", "MP3"} default button 2 with icon 1

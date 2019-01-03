@@ -21,7 +21,7 @@
 
 import os, shutil, time, sys;
 from plistlib   import readPlist;                                               # Import plistRead
-from subprocess import check_output, Popen, PIPE, STDOUT;
+from subprocess import check_output, Popen, PIPE, STDOUT, DEVNULL;
 from threading  import Thread, Lock;
 from urllib.parse import unquote;
 from tkinter import Tk;
@@ -83,18 +83,18 @@ class iTunes_Music_Converter( object ):
   '''
   def __init__(self, dest_dir=None, bit_rate=None, codec=None, verbose=False):
     if not self._testFFmpeg():                                                  # Test for FFmpeg command
-      print( 'ffmpeg command NOT found! Exiting!' );                            # Print error
+#       print( 'ffmpeg command NOT found! Exiting!' );                            # Print error
       return None;                                                              # Return None
     self.verbose = verbose;                                                     # Set verbose
     if (dest_dir is None):                                                      # If destination directory is None
       self.dest_dir = os.path.join(data.home_dir, 'Music', 'iTunes_Converted'); # Set default directory
-      print( 'No directory set...putting converted files in:' );                # Print message so that user knows what is going on
-      print( '    {}'.format(self.dest_dir) );                                  # Print message
+#       print( 'No directory set...putting converted files in:' );                # Print message so that user knows what is going on
+#       print( '    {}'.format(self.dest_dir) );                                  # Print message
     else:                                                                       # Else, use dest_dir
       self.dest_dir = dest_dir;                                                 # Append forward slash to the end of the directory if one is not there
-      if self.verbose:                                                          # If verbose
-        print( 'Ouput directory is:' );                                         # Some verbose output
-        print( '    {}'.format(self.dest_dir) );                                # Some verbose output
+#       if self.verbose:                                                          # If verbose
+#         print( 'Ouput directory is:' );                                         # Some verbose output
+#         print( '    {}'.format(self.dest_dir) );                                # Some verbose output
 
     self.cmdBase  = ['ffmpeg', '-y', '-hide_banner', '-loglevel', '32', '-i'];  # Set up base ffmpeg command
     self.cmdOpts  = None;                                                       # Initialize cmdOpts to None
@@ -129,6 +129,7 @@ class iTunes_Music_Converter( object ):
     
     if self.verbose:
       self.root = Tk();
+      self.root.winfo_toplevel().title('convert_music')
       self.prog = progressFrame( self.root, self.nTrack, self.nProc );
       Thread(target = self._convert, args = (track_id,)).start();
       self.root.mainloop();
@@ -138,24 +139,22 @@ class iTunes_Music_Converter( object ):
   def _convert(self, track_id):
     '''Function that iterates over tracks to convert them.'''
     self.cnt = Counter(self.lock);
-    print( type(self.cnt) )
     t00 = time.time();                                                          # Get time for start of iteration over tracks
     for track in track_id:                                                      # Iterate over all tracks
-      info   = self.itunes_data['Tracks'][track];                               # Get the information about the track
-      self._processChecker();                                                   # Block to ensure there aren't too many process
+      info = self.itunes_data['Tracks'][track];                                 # Get the information about the track
+      proc = self._processChecker();                                            # Block to ensure there aren't too many process
       proc = Thread(target = self._convertThread, args = (info,) );             # Initialize thread
       proc.start();                                                             # Start thread
       self.process.append( proc );                                              # Append thread to process list
-    for proc in self.process:                                                   # Iterate over all processes
+    while len(self.process) > 0:
+      proc = self.process.pop();                                                # Iterate over all processes
       try:                                                                      # Try to
         proc.join();                                                            # Join the process
       except:                                                                   # On exception
         proc.communicate();                                                     # Communicate with process
-      self.process.remove( proc );                                              # Remove it from the list
     if self.verbose:                                                            # If verbose
       self.root.after(1000, self.root.destroy)
-      self.root = None;
-      print( 'Elapsed: {} {}'.format( round((time.time()-t00)/60),'min' ) );    # Print elapsed time if verbose is true
+#       print( 'Elapsed: {} {}'.format( round((time.time()-t00)/60),'min' ) );    # Print elapsed time if verbose is true
   ##############################################################################
   def _getSrcDest(self, info):
     '''A function to parse/generate source and destination directories.'''
@@ -168,67 +167,63 @@ class iTunes_Music_Converter( object ):
     return src, dest;                                                           # Return the source and destination directories
   ##############################################################################
   def _convertThread(self, info):
-    bar = self.prog.getFreeBar();
-    logFmt = self._logFormat( info );                                           # Get log format
     if (info['Track Type'].upper() == 'REMOTE'):                                # If track type is remote
-      if self.verbose: 
-        self.prog.updateText(bar, 'Remote file, skipping!');                    # Print it is being skipped
-        self.prog.resetBar(bar);
-        print( logFmt.format('Remote file, skipping!') );                       # Print it is being skipped
+#       if self.verbose: 
+#         print( logFmt.format('Remote file, skipping!') );                       # Print it is being skipped
       return;                                                                   # Skip to next iteration
     src, dest = self._getSrcDest( info );                                       # Get source and destination file
-    print(src, dest)
+    file = unquote(info['Location']).replace( unquote(self.music_folder), '' );
+    if self.verbose:
+      bar    = self.prog.getBar( info );
+      logFmt = self._logFormat( info );                                           # Get log format
     if os.path.isfile(dest):                                                    # If destination file already exists
       if self.verbose: 
-        self.prog.updateText(bar, 'File EXISTS on receiver!');                  # Print it is being skipped
-        self.prog.resetBar(bar);
-        print( logFmt.format('File EXISTS on receiver!') );                     # Some verbose output
+        bar.updateStatus('File EXISTS on receiver!');                  # Print it is being skipped
+#         print( logFmt.format('File EXISTS on receiver!') );                     # Some verbose output
       return;                                                                   # If the destination file already exists, continue past it
     if self.verbose: 
-      self.prog.updateText(bar, 'Fetching artwork...');                         # Print it is being skipped
-      print( logFmt.format('Fetching artwork...') );                            # Print info; attempting to get album cover
+      bar.updateStatus('Fetching artwork...');                         # Print it is being skipped
+#       print( logFmt.format('Fetching artwork...') );                            # Print info; attempting to get album cover
     cover = self._getCover( dest, info, logFmt );                               # Set path to cover art file
     if self.verbose:                                                            # If verbose 
-      self.prog.updateText(bar, 'Artwork Downloaded', prog = True);             # Print it is being skipped
+      bar.updateStatus('Artwork Downloaded', prog = True);             # Print it is being skipped
       t0 = time.time();                                                         # Get the start time
     if 'MPEG' in info['Kind']:                                                  # If file is an mp3
       if self.verbose: 
-        self.prog.updateText(bar, 'Copying file');
-        print( logFmt.format('Copying file') );                                 # If the file is already mp3, just copy
+        bar.updateStatus('Copying file');
+#         print( logFmt.format('Copying file') );                                 # If the file is already mp3, just copy
       try:                                                                      # Try to
         shutil.copy( src, dest );                                               # Copy the file
         tagMusic( dest, info, artwork = cover );                                # Write metadata to the file
       except:                                                                   # On exception...
         if self.verbose: 
-          self.prog.updateText(bar, 'Failed to copy file!');
-          print( logFmt.format('Failed to copy file!') );                       # Log a message
+          bar.updateStatus('Failed to copy file!');
+#           print( logFmt.format('Failed to copy file!') );                       # Log a message
         if os.path.isfile(dest): os.remove(dest);                               # Remove the file if it exists  
       else:
-        self.prog.updateText(bar, 'Copy success!', prog = True);
+        bar.updateStatus('Copy success!', prog = True);
     else:                                                                       # Else, it is NOT an mp3
       if self.verbose:
-        self.prog.updateText(bar, 'Encoding file!');
-        print( logFmt.format('Encoding file') );                # Print message
+        bar.updateStatus('Encoding file!');
+#         print( logFmt.format('Encoding file') );                # Print message
       dest = '.'.join( dest.split('.')[:-1] ) + '.' + self.codec;               # Ensure destination file has correct extension
       cmd = self.cmdBase + [src] + self.cmdOpts + [dest];                       # Generate command
 
-      with open(os.devnull, 'w') as null:
-        proc = Popen(cmd, stdout = PIPE, stderr = STDOUT, stdin = null, 
-                     universal_newlines = True);
+      proc = Popen(cmd, stdout = PIPE, stderr = STDOUT, stdin = DEVNULL);
       if self.verbose:
-        self.prog.conversion(bar, proc);
+        bar.conversion(proc);
       proc.communicate();
       if proc.returncode == 0:                                                  # If the return code is zero (0)
         if self.verbose:
-          self.prog.updateText(bar, 'Writing metadata');
-        print(cover)
+          bar.updateStatus('Writing metadata');
         tagMusic( dest, info, artwork = cover );                                # Write metadata
         if self.verbose:
-          self.prog.finishedBar(bar);
+          bar.finish();
 
     if self.verbose:                                                            # If verbose
       tmp = '{:>13}{:05.1f}{:1}'.format('Finised in: ',time.time()-t0,'s');     # Determine run time
-      print( logFmt.format( tmp ) );                                            # Print log info
+#       print( logFmt.format( tmp ) );                                            # Print log info
+      self.prog.freeBar(bar);
   ##############################################################################
   def _getCover(self, dest, info, logFmt):
     '''
@@ -251,11 +246,11 @@ class iTunes_Music_Converter( object ):
     else:                                                                       # Else, file does NOT exist and not enough information to try to download it
       open(cover, 'a').close();                                                 # Empty file created so do not attempt to download on subsequent runs.
       cover = None;                                                             # If art work file does NOT exist and there is NOT enough info to try to download, set cover_code to 1
-    if self.verbose:                                                            # If verbose
-      if cover:                                                                 # If cover is not None
-        print(logFmt.format('Artwork Success!'));                               # If verbose is NOT false and cover art exists/was downloaded print successes
-      else:                                                                     # Else, cover is None
-        print(logFmt.format('Artwork Failed!'));                                # If verbose is NOT false and cover art not exists/failed to downloaded print failed
+#     if self.verbose:                                                            # If verbose
+#       if cover:                                                                 # If cover is not None
+#         print(logFmt.format('Artwork Success!'));                               # If verbose is NOT false and cover art exists/was downloaded print successes
+#       else:                                                                     # Else, cover is None
+#         print(logFmt.format('Artwork Failed!'));                                # If verbose is NOT false and cover art not exists/failed to downloaded print failed
     return cover;                                                               # Return cover
   ##############################################################################
   def _logFormat( self, info ):
@@ -274,17 +269,19 @@ class iTunes_Music_Converter( object ):
   ##############################################################################
   def _processChecker(self):
     '''Stop too many processes from running'''
-    if len(self.process) >= self.nProc:                                         # If running enough process
+    nProc = len(self.process)
+    if nProc >= self.nProc:                                                     # If running enough process
       while all( [proc.is_alive() for proc in self.process] ):                  # While all the process are alive
         time.sleep(0.01);                                                       # Sleep for a little
-      for proc in self.process:                                                 # One of the process is no longer alive so iterate to find the dead one
-        if not proc.is_alive():                                                 # If the process is not alive
+      for i in range(nProc):                                                    # One of the process is no longer alive so iterate to find the dead one
+        if not self.process[i].is_alive():                                      # If the process is not alive
+          proc = self.process.pop(i);                                           # Pop off the process
           try:                                                                  # Try to...
             proc.join();                                                        # Join the process
           except:                                                               # On exception
             proc.communicate();                                                 # Communicate with process
-          self.process.remove( proc );                                          # Remove it from the list
-          break;                                                                # Break the for loop
+          return proc;                                                          # Return the handle of the finished process
+    return None;                                                                # Return None
   ##############################################################################
   def _setCmdOpts(self):  
     if self.codec == 'mp3':                                                     # If codec is mp3
