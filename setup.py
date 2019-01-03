@@ -1,21 +1,28 @@
 #!/usr/bin/env python
-from setuptools import setup
 import setuptools
 import subprocess, os, site;
-# print('Hello')
+print('Hello')
 
 def add_to_profile( file, path ):
-  with open(file, 'a') as f:
-  	f.write("\n# Add python bin to path\n");
-  	f.write("export PATH=$PATH:{}\n".format(path));
+  if not check_profile( file, path ):
+    with open(file, 'a') as f:
+      f.write("\n# Add python bin to path\n");
+      f.write("export PATH=$PATH:{}\n".format(path));
+
+def check_profile( file, path ):
+  with open(file, 'r') as f:
+    data = f.read();
+  if path in data:
+    return True;
+  return False;
 
 # Code to install the Apple Script
 home = os.path.expanduser('~');
 dir  = os.path.join( home, 'Library', 'iTunes', 'Scripts' );
 if not os.path.isdir( dir ): os.makedirs( dir );
-out = os.path.join( dir, 'convert_music.app' )
-cmd = ['/usr/bin/osacompile', '-o', out, 'convert_music.txt'];
-if os.path.isfile( out ): os.remove( out );
+appFile = os.path.join( dir, 'convert_music.app' )
+cmd = ['/usr/bin/osacompile', '-o', appFile, 'convert_music.txt'];
+if os.path.isfile( appFile ): os.remove( appFile );
 # print( out );
 with open(os.devnull, 'w') as null:
 	proc = subprocess.Popen(cmd, stdout=null, stderr=subprocess.STDOUT);
@@ -45,11 +52,13 @@ setuptools.setup(
   url          = "https://github.com/kwodzicki/iTunes_Music_Converter",
   author       = "Kyle R. Wodzicki",
   author_email = "krwodzicki@gmail.com",
-  version      = "0.2.4",
+  version      = "0.2.6",
   packages     = setuptools.find_packages(),
   install_requires = [ 
     "musicbrainzngs", "mutagen", "Pillow"
   ],
+  package_data         = {'iTunes_Music_Converter': [ appFile ]},
+  include_package_data = True,
   scripts=['bin/iTunes_Music_Converter'],
   zip_safe = False
 );
