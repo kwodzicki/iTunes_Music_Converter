@@ -36,20 +36,23 @@ from iTunes_Music_Converter.progressFrame import progressFrame;
 
 class Counter(object):
   '''A cross-thread counter object'''
-  def __init__(self, lock):
-    self.val = 0
-    self.lock = lock
+  def __init__(self):
+    self.__val  = 0;
+    self.__lock = Lock();
   def increment(self):
-    with self.lock:
-      self.val += 1
+    with self.__lock:
+      self.__val += 1;
   def value(self):
-    with self.lock:
-      return self.val
+    with self.__lock:
+      return self.__val;
   def incVal(self):
-    with self.lock:
-      self.val += 1
-      return self.val
-            
+    with self.__lock:
+      self.__val += 1;
+      return self.__val;
+  def reset(self):
+    with self.__lock:
+      self.__val = 0;
+
 class iTunes_Music_Converter( object ):
   '''
   Name:
@@ -73,7 +76,8 @@ class iTunes_Music_Converter( object ):
                 DEFAULT is 320k.
     codce    : The codec to use for encoding. The two supported options are
                 MP3 and FLAC. DEFAULT is MP3.
-    verbose  : Increase the verbosity
+    verbose  : Increase the verbosity; display progress in command line
+    gui      : Display GUI of progress
   Author and History:
     Kyle R. Wodzicki     Created 24 May 2016
 
@@ -81,33 +85,30 @@ class iTunes_Music_Converter( object ):
         Changed when initial timing for each track is set
         Added a total timer for entire process
   '''
-  def __init__(self, dest_dir=None, bit_rate=None, codec=None, verbose=False):
-    if not self._testFFmpeg():                                                  # Test for FFmpeg command
-#       print( 'ffmpeg command NOT found! Exiting!' );                            # Print error
+  def __init__(self, dest_dir=None, bit_rate=None, codec=None, verbose=False, gui=False):
+    if not self._testFFmpeg():                                                  # Test for FFmpeg command     
       return None;                                                              # Return None
     self.verbose = verbose;                                                     # Set verbose
+    self.gui     = gui;                                                         # Set gui, not used yet
 
     ncpu = os.cpu_count();                                                      # Number of CPUs available
     if ncpu <= 2:                                                               # If number of CPUs <=2
       self.nProc = ncpu;                                                        # Set number of concurrent processes allowed to number of CPUs
     else:                                                                       # Else, number of CPUs > 2
       self.nProc = round(ncpu / 2);                                             # Set to half the number of CPUs rounded up
-#     self.nProc = 1;
 
     if (dest_dir is None):                                                      # If destination directory is None
       self.dest_dir = os.path.join(data.home_dir, 'Music', 'iTunes_Converted'); # Set default directory
     else:                                                                       # Else, use dest_dir
       self.dest_dir = dest_dir;                                                 # Append forward slash to the end of the directory if one is not there
 
-    if self.verbose:                                                            # If verbose is set
+    if self.gui:                                                                # If verbose is set
       self.root     = Tk();                                                     # Initialize a root window
       self.progress = progressFrame( self.root, self.nProc, self.dest_dir );    # Set up progress window
       self.root.winfo_toplevel().title('convert_music');                        # Set the window title
     else:
       self.root     = None;
       self.progress = None;
-
-
 
     self.cmdBase  = ['ffmpeg', '-y', '-hide_banner', '-loglevel', '32', '-i'];  # Set up base ffmpeg command
     self.cmdOpts  = None;                                                       # Initialize cmdOpts to None
@@ -124,11 +125,10 @@ class iTunes_Music_Converter( object ):
         self.all_tracks.append( i );                                            # Append the track id to the all_tracks list
 
       
-    self.cnt       = None;                                                      # Set cnt to None
+    self.cnt       = Counter();                                                 # Set cnt to Counter class
     self.nTrack    = None;                                                      # Set nTracks to None
     self.process   = [];                                                        # Initialize list of processes
-    self.lock      = Lock();                                                    # Initialize a thread lock
-    self.__covLck  = Lock();                                                    # Lock for downloading cover art
+    self.__Lock    = Lock();                                                    # Lock for downloading cover art
   ##############################################################################
   def convert(self, track_id = None):
     if (track_id is None):                                                      # If not track list input,
@@ -136,32 +136,25 @@ class iTunes_Music_Converter( object ):
     else:                                                                       # Else, track list was input
       if type(track_id) is not str: track_id = str(track_id);                   # Make sure its a list
       track_id = [i for i in track_id.split() if i in self.all_tracks];         # Parse track IDs input into function checking that they are in the all_ids list
-    self.nTrack = len(track_id)
-    if self.nTrack == 0: 
-      if self.verbose: self.root.destroy();
-      return 1;                                                  # If track_id has zero length, then nothing to convert, return 1
-    self.progress.nTracks( self.nTrack );                                           # Set number of tracks to convert in the progress bar
+    self.nTrack = len(track_id);                                                # Number of tracks to convert
+    if self.nTrack == 0:                                                        # If number of tracks is zero
+      if self.gui: self.root.destroy();                                         # If verbose is set, destroy the root tkinter object
+      return 1;                                                                 # return 1
+    self.cnt.reset();                                                           # Reset the count for cnt attribute
+    if self.gui:
+      self.progress.nTracks( self.nTrack );                                     # Set number of tracks to convert in the progress bar
     
-#     if self.verbose:
-#       self.root = Tk();
-#       self.root.winfo_toplevel().title('convert_music')
-#       self.progress = progressFrame( self.root, self.nTrack, self.nProc );
-#       Thread(target = self._convert, args = (track_id,)).start();
-#       self.root.mainloop();
-#     else:
-#       self._convert(track_id);
-    thread = Thread(target = self._convert, args = (track_id,));
-    thread.start();
+    thread = Thread(target = self._convert, args = (track_id,));                # Initialize thread to run _convert method
+    thread.start();                                                             # Start the thread
 
-    if self.verbose:
-      self.root.mainloop();
-    else:
-      thread.join();
+    if self.gui:                                                                # If verbose is set
+      self.root.mainloop();                                                     # Start the tkinter main loop
+    else:                                                                       # Else
+      thread.join();                                                            # Just join the thread and wait for it to finish
 
   ##############################################################################
   def _convert(self, track_id):
     '''Function that iterates over tracks to convert them.'''
-    self.cnt = Counter(self.lock);
     t00 = time.time();                                                          # Get time for start of iteration over tracks
     for track in track_id:                                                      # Iterate over all tracks
       info = self.itunes_data['Tracks'][track];                                 # Get the information about the track
@@ -169,41 +162,45 @@ class iTunes_Music_Converter( object ):
       proc = Thread(target = self._convertThread, args = (info,) );             # Initialize thread
       proc.start();                                                             # Start thread
       self.process.append( proc );                                              # Append thread to process list
-    while len(self.process) > 0:
-      proc = self.process.pop();                                                # Iterate over all processes
+    while len(self.process) > 0:                                                # While there are processes left int he process attribute
+      proc = self.process.pop();                                                # Pop processes off the process attribute list
       try:                                                                      # Try to
         proc.join();                                                            # Join the process
       except:                                                                   # On exception
         proc.communicate();                                                     # Communicate with process
   ##############################################################################
   def _convertThread(self, info):
+    logFmt = self._logFormat(info);                                             # Get logging format
     if (info['Track Type'].upper() == 'REMOTE'):                                # If track type is remote
       return;                                                                   # Skip to next iteration
     src, dest = self._getSrcDest( info );                                       # Get source and destination file
     file = unquote(info['Location']).replace( unquote(self.music_folder), '' );
-    if self.verbose:
+    if self.gui:
       bar    = self.progress.getBar( info );
-      logFmt = self._logFormat( info );                                           # Get log format
+    if self.verbose:
+      logFmt = self._logFormat( info );                                         # Get log format
     if os.path.isfile(dest):                                                    # If destination file already exists
-      if self.verbose: 
+      if self.gui: 
         bar.updateStatus('File EXISTS on receiver!', finish = True);            # Print it is being skipped
         self.progress.freeBar(bar);
+      if self.verbose: 
+        print( log.Fmt.format('File EXISTS on receiver!') );                    # Print it is being skipped
       return;                                                                   # If the destination file already exists, continue past it
-    if self.verbose: 
+    if self.gui: 
       bar.updateStatus('Fetching artwork...');                                  # Print it is being skipped
     cover = self._getCover( dest, info, logFmt );                               # Set path to cover art file
-    if self.verbose:                                                            # If verbose 
+    if self.gui:                                                                # If gui
       bar.updateStatus('Artwork Downloaded', prog = True);                      # Print it is being skipped
       t0 = time.time();                                                         # Get the start time
 
     status = 1;
     if 'MPEG' in info['Kind']:                                                  # If file is an mp3
-      if self.verbose: 
+      if self.gui: 
         bar.updateStatus('Copying file');
       try:                                                                      # Try to
         shutil.copy( src, dest );                                               # Copy the file
       except:                                                                   # On exception...
-        if self.verbose: 
+        if self.gui: 
           bar.updateStatus('Failed to copy file!');
           self.progress.freeBar(bar);
         if os.path.isfile(dest): os.remove(dest);                               # Remove the file if it exists  
@@ -211,23 +208,23 @@ class iTunes_Music_Converter( object ):
         bar.updateStatus('Copy success!', prog = True);
         status = 0;
     else:                                                                       # Else, it is NOT an mp3
-      if self.verbose:
+      if self.gui:
         bar.updateStatus('Encoding file!');
       cmd = self.cmdBase + [src] + self.cmdOpts + [dest];                       # Generate command
-
+      with open('/Users/kyle/test.txt', 'w') as fid: fid.write(cmd)
       proc = Popen(cmd, stdout = PIPE, stderr = STDOUT, stdin = DEVNULL);
-      if self.verbose:
+      if self.gui:
         bar.conversion(proc);
       proc.communicate();
       status = proc.returncode
     if status == 0:                                                  # If the return code is zero (0)
-      if self.verbose:
+      if self.gui:
         bar.updateStatus('Writing metadata');
       tagMusic( dest, info, artwork = cover );                                  # Write metadata
-      if self.verbose:
+      if self.gui:
         bar.finish();
 
-    if self.verbose:                                                            # If verbose
+    if self.gui:                                                                # If gui
       self.progress.freeBar(bar);
   ##############################################################################
   def _getSrcDest(self, info):
@@ -235,10 +232,12 @@ class iTunes_Music_Converter( object ):
     src  = unquote( info['Location'] );                                         # Get path to source file in unquoted text
     dest = src.replace(self.music_folder, '');                                  # Set destination to the source with the music folder replaced by an empty string
     dest = os.path.join( self.dest_dir, dest );                                 # Prepend the output directory to the destination path
-    dest = '.'.join( dest.split('.')[:-1] ) + '.' + self.codec;                 # Ensure destination file has correct extension
+    if 'MPEG' not in info['Kind']:                                              # If file is NOT an mp3
+      dest = '.'.join( dest.split('.')[:-1] ) + '.' + self.codec;               # Ensure destination file has correct extension
     src  = src.replace(data.prefix, '');                                        # Remove the prefix from the source directory
-    if not os.path.isdir(os.path.dirname(dest)):                                # If the destination directory does NOT exist
-      os.makedirs(os.path.dirname(dest));                                       # Create it
+    with self.__Lock:                                                           # Get the __Lock
+      if not os.path.isdir(os.path.dirname(dest)):                              # If the destination directory does NOT exist
+        os.makedirs(os.path.dirname(dest));                                     # Create it
     return src, dest;                                                           # Return the source and destination directories
   ##############################################################################
   def _getCover(self, dest, info, logFmt):
@@ -246,7 +245,7 @@ class iTunes_Music_Converter( object ):
     Wrapper function to parse track information
     a attempt cover art download.
     '''
-    self.__covLck.acquire();                                                    # Get the __covLck so that cant try to download same cover art at once
+    self.__Lock.acquire();                                                      # Get the __Lock so that cant try to download same cover art at once
     cover = os.path.join( os.path.dirname(dest), 'coverart.jpeg' );             # Set path to cover art file
     if os.path.isfile(cover):                                                   # If the cover art file exists
       cover = None if os.stat(cover).st_size == 0 else cover;                   # Set cover code to zero if cover art file exists
@@ -263,7 +262,7 @@ class iTunes_Music_Converter( object ):
     else:                                                                       # Else, file does NOT exist and not enough information to try to download it
       open(cover, 'a').close();                                                 # Empty file created so do not attempt to download on subsequent runs.
       cover = None;                                                             # If art work file does NOT exist and there is NOT enough info to try to download, set cover_code to 1
-    self.__covLck.release();                                                    # Release the lock
+    self.__Lock.release();                                                      # Release the lock
     return cover;                                                               # Return cover
   ##############################################################################
   def _logFormat( self, info ):

@@ -43,11 +43,16 @@ end tell
 set destDir to choose folder with prompt "Choose Output Folder." default location (path to desktop folder)
 set destDir to (the quoted form of POSIX path of (destDir as alias)) --redefine
 
+
 --Set up command to source the bash profile file
 set profile to "if [ -f $HOME/.profile ]; then source $HOME/.profile; elif [ -f $HOME/.bash_profile ]; then source $HOME/.bash_profile; fi"
 
+--Get location for python scripts
+set prefix to do shell script profile & "; python -c 'import sys; print(sys.exec_prefix)'"
+
 --Set up the beginning part of command with path to command, destination directory, and track IDs
-set cnvtCmd to profile & "; " & "iTunes_Music_Converter" & " -v -d " & destDir & " -t " & trackIDs & "'"
+set cnvtCmd to profile & "; " & prefix & "/bin/iTunes_Music_Converter --gui"
+set cnvtCmd to cnvtCmd & " -d " & destDir & " -t " & trackIDs & "'"
 
 --Prompt to set the audio codec
 display dialog "Select audio codec" buttons {"FLAC", "MP3"} default button 2 with icon 1

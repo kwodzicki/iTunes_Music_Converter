@@ -10,12 +10,14 @@ parser.add_argument("-t", "--track",   metavar='track',       type=str, help="iT
 parser.add_argument("-c", "--codec",   metavar='audio codec', type=str, help="Codec to use: mp3 OR flac. Default is mp3.");       # Set an option of inputing of a file path. No dictionary can be passed via the command line
 parser.add_argument("-b", "--bitrate", metavar='bit rate',    type=str, help="MP3 bit rate. Default is 320k.");                   # Set an option of inputing of a file path. No dictionary can be passed via the command line
 parser.add_argument("-v", "--verbose", action='store_true',   help="increase verbosity")  
+parser.add_argument("--gui",           action='store_true',   help="display GUI for progess")  
 args = parser.parse_args();                                                     # Parse the args
 
 inst = iTunes_Music_Converter(
   dest_dir = args.dir,
   bit_rate = args.bitrate,
   codec    = args.codec,
-  verbose  = args.verbose
+  verbose  = args.verbose,
+  gui      = args.gui
 ); # Call the function to write the tags
 inst.convert( track_id = args.track )

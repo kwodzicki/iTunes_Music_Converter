@@ -34,16 +34,16 @@ if proc.returncode != 0:
 base = site.PREFIXES[0];
 path = os.path.join(base, 'bin')
 
-if os.path.isfile( os.path.join(home, '.profile' ) ):
-	profile = os.path.join(home, '.profile');
-	add_to_profile( profile, path );
-elif os.path.isfile( os.path.join(home, '.bash_profile' ) ):
-	profile = os.path.join(home, '.bash_profile' );
-	add_to_profile( profile, path );
-else:
-	profile = os.path.join(home, '.bash_profile' );
-	add_to_profile( profile, path );
-
+# if os.path.isfile( os.path.join(home, '.profile' ) ):
+# 	profile = os.path.join(home, '.profile');
+# 	add_to_profile( profile, path );
+# elif os.path.isfile( os.path.join(home, '.bash_profile' ) ):
+# 	profile = os.path.join(home, '.bash_profile' );
+# 	add_to_profile( profile, path );
+# else:
+# 	profile = os.path.join(home, '.bash_profile' );
+# 	add_to_profile( profile, path );
+# 
 
 
 setuptools.setup(
@@ -52,7 +52,7 @@ setuptools.setup(
   url          = "https://github.com/kwodzicki/iTunes_Music_Converter",
   author       = "Kyle R. Wodzicki",
   author_email = "krwodzicki@gmail.com",
-  version      = "0.3.3",
+  version      = "0.3.4",
   packages     = setuptools.find_packages(),
   install_requires = [ 
     "musicbrainzngs", "mutagen", "Pillow", "tkinter"
