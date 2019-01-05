@@ -26,12 +26,7 @@ from threading  import Thread, Lock;
 from urllib.parse import unquote;
 from tkinter import Tk;
 
-# from iTunes_Music_Converter.utils.tagMusic      import tagMusic
-# from iTunes_Music_Converter.utils.get_album_art import get_album_art;           # Import get_album_art function
 from .utils import tagMusic, get_album_art, getLibraryXML, data;
-
-
-# from iTunes_Music_Converter.utils import data;
 from iTunes_Music_Converter.progressFrame import progressFrame;
 
 class Counter(object):
@@ -151,7 +146,6 @@ class iTunes_Music_Converter( object ):
       self.root.mainloop();                                                     # Start the tkinter main loop
     else:                                                                       # Else
       thread.join();                                                            # Just join the thread and wait for it to finish
-
   ##############################################################################
   def _convert(self, track_id):
     '''Function that iterates over tracks to convert them.'''
@@ -168,62 +162,71 @@ class iTunes_Music_Converter( object ):
         proc.join();                                                            # Join the process
       except:                                                                   # On exception
         proc.communicate();                                                     # Communicate with process
+    if self.verbose:                                                            # If verbose
+      print( 'Elapsed: {} {}'.format( round((time.time()-t00)/60),'min' ) );    # Print elapsed time if verbose is true
+      if self.gui: print( 'Waiting for GUI to close...' );
   ##############################################################################
   def _convertThread(self, info):
     logFmt = self._logFormat(info);                                             # Get logging format
     if (info['Track Type'].upper() == 'REMOTE'):                                # If track type is remote
+      if self.verbose: print( logFmt.format('Remote file, skipping!') );        # Print it is being skipped
       return;                                                                   # Skip to next iteration
     src, dest = self._getSrcDest( info );                                       # Get source and destination file
     file = unquote(info['Location']).replace( unquote(self.music_folder), '' );
-    if self.gui:
-      bar    = self.progress.getBar( info );
-    if self.verbose:
-      logFmt = self._logFormat( info );                                         # Get log format
+
+    if self.gui: bar = self.progress.getBar( info );
+
     if os.path.isfile(dest):                                                    # If destination file already exists
+      if self.verbose: print( logFmt.format('File EXISTS on receiver!') );      # Some verbose output
       if self.gui: 
         bar.updateStatus('File EXISTS on receiver!', finish = True);            # Print it is being skipped
         self.progress.freeBar(bar);
-      if self.verbose: 
-        print( log.Fmt.format('File EXISTS on receiver!') );                    # Print it is being skipped
       return;                                                                   # If the destination file already exists, continue past it
-    if self.gui: 
-      bar.updateStatus('Fetching artwork...');                                  # Print it is being skipped
-    cover = self._getCover( dest, info, logFmt );                               # Set path to cover art file
-    if self.gui:                                                                # If gui
-      bar.updateStatus('Artwork Downloaded', prog = True);                      # Print it is being skipped
-      t0 = time.time();                                                         # Get the start time
 
+    if self.gui:     bar.updateStatus('Fetching artwork...');                   # Print it is being skipped
+    if self.verbose: print( logFmt.format('Fetching artwork...') );             # Print info; attempting to get album cover
+    cover = self._getCover( dest, info, logFmt );                               # Set path to cover art file
+    if cover is None:
+      if self.gui:     bar.updateStatus('Artwork Failed', prog = True);           # Print it is being skipped
+      if self.verbose: print(logFmt.format('Artwork Failed!')); 
+    else:
+      if self.gui:     bar.updateStatus('Artwork Success', prog = True);          # Print it is being skipped
+      if self.verbose: print(logFmt.format('Artwork Success!'));
+  
+    t0  = time.time();                                                          # Get the start time
     status = 1;
     if 'MPEG' in info['Kind']:                                                  # If file is an mp3
-      if self.gui: 
-        bar.updateStatus('Copying file');
+      if self.gui:     bar.updateStatus('Copying file');
+      if self.verbose: print( logFmt.format('Copying file') );                  # If the file is already mp3, just copy
       try:                                                                      # Try to
         shutil.copy( src, dest );                                               # Copy the file
       except:                                                                   # On exception...
         if self.gui: 
           bar.updateStatus('Failed to copy file!');
           self.progress.freeBar(bar);
+        if self.verbose: print( logFmt.format('Failed to copy file!') );        # Log a message
         if os.path.isfile(dest): os.remove(dest);                               # Remove the file if it exists  
       else:
-        bar.updateStatus('Copy success!', prog = True);
+        if self.gui:     bar.updateStatus('Copy success!', prog = True);
+        if self.verbose: print( logFmt.format('Copy success!') );               # Log a message
         status = 0;
     else:                                                                       # Else, it is NOT an mp3
-      if self.gui:
-        bar.updateStatus('Encoding file!');
+      if self.gui:     bar.updateStatus('Encoding file!');
+      if self.verbose: print( logFmt.format('Encoding file') );                 # Print message
       cmd = self.cmdBase + [src] + self.cmdOpts + [dest];                       # Generate command
-      with open('/Users/kyle/test.txt', 'w') as fid: fid.write(cmd)
       proc = Popen(cmd, stdout = PIPE, stderr = STDOUT, stdin = DEVNULL);
-      if self.gui:
-        bar.conversion(proc);
+      if self.gui: bar.conversion(proc);
       proc.communicate();
       status = proc.returncode
     if status == 0:                                                  # If the return code is zero (0)
-      if self.gui:
-        bar.updateStatus('Writing metadata');
+      if self.gui:     bar.updateStatus('Writing metadata');
+      if self.verbose: print( logFmt.format('Writing metadata') );
       tagMusic( dest, info, artwork = cover );                                  # Write metadata
-      if self.gui:
-        bar.finish();
+      if self.gui: bar.finish();
 
+    if self.verbose:                                                            # If verbose
+      tmp = '{:>13}{:05.1f}{:1}'.format('Finised in: ',time.time()-t0,'s');     # Determine run time
+      print( logFmt.format( tmp ) );                                            # Print log info
     if self.gui:                                                                # If gui
       self.progress.freeBar(bar);
   ##############################################################################
