@@ -7,10 +7,18 @@ from datetime import timedelta;
 from threading import Thread, Lock;
 
 pattern = re.compile('[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{2}');                    # Pattern for finding times
+durPattern = re.compile('Duration: [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{2}');       # Pattern for finding times
+timPattern = re.compile('time=[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{2}');            # Pattern for finding times
+
 convert = np.asarray( [3600.0, 60.0, 1.0] );                                    # Conversion for total time
 
 def parseTime( time ):
   '''Function for converting time string to total seconds'''
+  time = time.split('=')[-1];
+  return (np.asarray(time.split(':'), dtype = float) * convert).sum();
+def parseDuration( time ):
+  '''Function for converting time string to total seconds'''
+  time = time.split()[-1];
   return (np.asarray(time.split(':'), dtype = float) * convert).sum();
 
 ################################################################################
@@ -153,7 +161,7 @@ class progressTrack( tk.Frame ):
     '''
     startVal = self.progress['value'];                                          # Current value of the progress bar
     duration = None;                                                            # Set file duration to None;
-    time     = None;                                                            # Set current file time to None;
+    time     = 0.0;                                                             # Set current file time to None;
     progress = 0;                                                               # Set progress to zero (0)
     line     = b'';                                                             # Set line to empty byte line
     while True:                                                                 # Iterate forever
@@ -164,13 +172,13 @@ class progressTrack( tk.Frame ):
         line += char;                                                           # Append the byte to the line variable
       else:                                                                     # Else, must be end of line
         line = line.decode('utf8');                                             # Convert byte line to string
-        test = re.search(pattern, line);                                        # Look for a time pattern in the line
-        if test:                                                                # If a time is found
-          time = parseTime( line[test.start():test.end()] );                    # Parse the time into seconds
-          if duration is None:                                                  # If duration has not been set, then assume this is the duration of the file
-            duration = time;                                                    # Set duration to time
-            time     = 0.0;                                                     # Set time to zero
-          else:                                                                 # Else
+        if duration is None:                                                    # If duration is None; i.e., has not been determined yet
+          test = re.search(durPattern, line);                                   # Look for the duration pattern in the line
+          if test: duration = parseDuration( line[test.start():test.end()] );   # If pattern is found, then parse the duration
+        else:                                                                   # Else
+          test = re.search(timPattern, line);                                   # Look for a time pattern in the line
+          if test:                                                              # If time patter found
+            time = parseTime( line[test.start():test.end()] );                  # Parse the time into seconds          
             progress = (time / duration) * 100.0                                # Set progress to percentage of time
             self.progress['value'] = startVal + progress;                       # Set progress bar position to initial position plus progress
         line = b'';                                                             # Set line back to empty byte line
@@ -199,8 +207,8 @@ class progressFrame( tk.Frame ):
     self.tRemain    = timedelta(seconds = -1.0);                                # floating variable for time remaining
     self.bars       = [None] * nprocs;                                          # List for track progress bar instances
     self.thread     = None;                                                     # Attribute to store thread handle for time remaining updater
-    self.lock       = Lock();                                                   # Threading lock, used in freeBar
-    
+    self.getLock    = Lock();                                                   # Threading lock, used in freeBar
+    self.freeLock   = Lock();
     frame     = tk.Frame( self );                                               # Frame for the overall progress
     outLabel  = tk.Label( frame, text = 'Output: {}'.format(dst_dir) );         # Label for the output directory
     progLabel = tk.Label( frame, text = 'Overall Progress');                    # Label for the progress bar
@@ -249,14 +257,21 @@ class progressFrame( tk.Frame ):
     Inputs:
       info : Dictionary of information about the track
     '''
+    self.getLock.acquire();
     if self.thread is None:                                                     # If thread attribute is None, has not been started
       self.thread = Thread(target = self.__timeRemainThread);                   # Set up thread
       self.thread.start();                                                      # Start the thread
 
-    for bar in self.bars:                                                       # Iterate over all progress bars
-      if not bar.is_running():                                                  # If the bar is NOT running
-        bar.setBar( info );                                                     # Run the setBar method on the bar to update the information
-        return bar;                                                             # Return reference to track progress bar instance
+    free = False;                                                               # Initialize free to false, this tells if a free bar has been found
+    while not free:                                                             # While free is flase
+      for bar in self.bars:                                                     # Iterate over all progress bars
+        if not bar.is_running():                                                # If the bar is NOT running
+          bar.setBar( info );                                                   # Run the setBar method on the bar to update the information
+          free = True;                                                          # Set free to True
+          break;                                                                # Break the for loop
+      if not free: time.sleep(0.01);                                            # If not free, sleep 10 milliseconds
+    self.getLock.release();                                                     # Release the getLock lock
+    return bar;                                                                 # Return reference to track progress bar instance
   ##############################################################################
   def freeBar(self, bar):
     '''
@@ -265,7 +280,7 @@ class progressFrame( tk.Frame ):
     Inputs:
       bar   : Reference to the progressTrack instance that should be freed.
     '''
-    self.lock.acquire();                                                        # Acquire lock so this method cannot be running multiple times at once
+    self.freeLock.acquire();                                                    # Acquire lock so this method cannot be running multiple times at once
     for i in range( len(self.bars) ):                                           # Iterate over all progressTrack instances
       if self.bars[i] == bar:                                                   # If the given bar is equal to that input
         self.elapsed += bar.time;                                               # Time difference between now and when free bar was found (should be roughly how long it took for conversion to occur);
@@ -274,7 +289,7 @@ class progressFrame( tk.Frame ):
         nRemain      = (self.progress['maximum'] - self.progress['value']);     # Number of tracks remaining
         self.tRemain = timedelta(seconds = round(avgTime * nRemain));           # Compute remaining time based on number of tracks left and average process time
         bar.freeBar();                                                          # Free the bar
-    self.lock.release();                                                        # Release the lock
+    self.freeLock.release();                                                    # Release the lock
   ##############################################################################
   def __timeRemainThread(self):
     '''

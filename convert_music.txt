@@ -1,15 +1,30 @@
---Set up command to source the bash profile file
-set profile to "if [ -f $HOME/.profile ]; then source $HOME/.profile; elif [ -f $HOME/.bash_profile ]; then source $HOME/.bash_profile; fi"
-
---Check that the iTunes Library XML file exists. If it does not, tell use to set
---option in the iTunes preferences.
-set iTunesLib to (do shell script "echo $HOME/Music/iTunes/iTunes Music Library.xml")
-tell application "Finder"
-	if not (exists iTunesLib as POSIX file) then
-		display dialog "Could not find the iTunes Library XML file. Please make sure that the 'Share iTunes Library XML with other application' options is set under iTunes Preference > Advanced and then try again."
-		error number -128
-	end if
+--Check if the script is already running
+tell application "System Events"
+	set n to count (every process whose name is "convert_music")
 end tell
+if n is greater than 1 then
+	display dialog "convert_music is already running!"
+	error number -128
+end if
+
+set iTunesLib to "" --Set iTunesLib variable to emtpy string
+set iTunesLibs to (do shell script "find $HOME/Music/iTunes/ -name '*.xml'") --Locate all XML files in the iTunes directory
+set iTunesLibs to paragraphs of iTunesLibs --Split multiple lines into a list
+
+set refDate to date "Monday, January 1, 1900 at 12:00:00 AM" --Reference date set to 1900
+repeat with theItem in iTunesLibs --Iterate over all the XML files
+	tell application "System Events" to set modDate to modification date of file theItem --Get modification date of theItme
+	if modDate is greater than refDate then --If the mod date is greater than the refDate
+		set refDate to modDate --Update the refDate
+		set iTunesLib to theItem --Set iTunsLib to theItem
+	end if
+end repeat
+
+if iTunesLib is "" then--If the iTunesLib variable is empty
+    display dialog "Could not find the iTunes Library XML file. Please make sure that the 'Share iTunes Library XML with other application' options is set under iTunes Preference > Advanced and then try again."
+		error number -128
+end if
+
 
 --Get track IDs for selected files in iTunes
 tell application "iTunes"
@@ -27,6 +42,9 @@ end tell
 --Prompt where to store files
 set destDir to choose folder with prompt "Choose Output Folder." default location (path to desktop folder)
 set destDir to (the quoted form of POSIX path of (destDir as alias)) --redefine
+
+--Set up command to source the bash profile file
+set profile to "if [ -f $HOME/.profile ]; then source $HOME/.profile; elif [ -f $HOME/.bash_profile ]; then source $HOME/.bash_profile; fi"
 
 --Set up the beginning part of command with path to command, destination directory, and track IDs
 set cnvtCmd to profile & "; " & "iTunes_Music_Converter" & " -v -d " & destDir & " -t " & trackIDs & "'"

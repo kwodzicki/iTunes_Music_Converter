@@ -92,6 +92,7 @@ class iTunes_Music_Converter( object ):
       self.nProc = ncpu;                                                        # Set number of concurrent processes allowed to number of CPUs
     else:                                                                       # Else, number of CPUs > 2
       self.nProc = round(ncpu / 2);                                             # Set to half the number of CPUs rounded up
+#     self.nProc = 1;
 
     if (dest_dir is None):                                                      # If destination directory is None
       self.dest_dir = os.path.join(data.home_dir, 'Music', 'iTunes_Converted'); # Set default directory
@@ -123,10 +124,11 @@ class iTunes_Music_Converter( object ):
         self.all_tracks.append( i );                                            # Append the track id to the all_tracks list
 
       
-    self.cnt      = None;                                                       # Set cnt to None
-    self.nTrack   = None;                                                       # Set nTracks to None
-    self.process  = [];                                                         # Initialize list of processes
-    self.lock     = Lock();                                                     # Initialize a thread lock
+    self.cnt       = None;                                                      # Set cnt to None
+    self.nTrack    = None;                                                      # Set nTracks to None
+    self.process   = [];                                                        # Initialize list of processes
+    self.lock      = Lock();                                                    # Initialize a thread lock
+    self.__covLck  = Lock();                                                    # Lock for downloading cover art
   ##############################################################################
   def convert(self, track_id = None):
     if (track_id is None):                                                      # If not track list input,
@@ -173,8 +175,6 @@ class iTunes_Music_Converter( object ):
         proc.join();                                                            # Join the process
       except:                                                                   # On exception
         proc.communicate();                                                     # Communicate with process
-    if self.verbose:                                                            # If verbose
-      self.root.after(2000, self.root.destroy)
   ##############################################################################
   def _convertThread(self, info):
     if (info['Track Type'].upper() == 'REMOTE'):                                # If track type is remote
@@ -213,7 +213,6 @@ class iTunes_Music_Converter( object ):
     else:                                                                       # Else, it is NOT an mp3
       if self.verbose:
         bar.updateStatus('Encoding file!');
-#       dest = '.'.join( dest.split('.')[:-1] ) + '.' + self.codec;               # Ensure destination file has correct extension
       cmd = self.cmdBase + [src] + self.cmdOpts + [dest];                       # Generate command
 
       proc = Popen(cmd, stdout = PIPE, stderr = STDOUT, stdin = DEVNULL);
@@ -247,6 +246,7 @@ class iTunes_Music_Converter( object ):
     Wrapper function to parse track information
     a attempt cover art download.
     '''
+    self.__covLck.acquire();                                                    # Get the __covLck so that cant try to download same cover art at once
     cover = os.path.join( os.path.dirname(dest), 'coverart.jpeg' );             # Set path to cover art file
     if os.path.isfile(cover):                                                   # If the cover art file exists
       cover = None if os.stat(cover).st_size == 0 else cover;                   # Set cover code to zero if cover art file exists
@@ -263,6 +263,7 @@ class iTunes_Music_Converter( object ):
     else:                                                                       # Else, file does NOT exist and not enough information to try to download it
       open(cover, 'a').close();                                                 # Empty file created so do not attempt to download on subsequent runs.
       cover = None;                                                             # If art work file does NOT exist and there is NOT enough info to try to download, set cover_code to 1
+    self.__covLck.release();                                                    # Release the lock
     return cover;                                                               # Return cover
   ##############################################################################
   def _logFormat( self, info ):
