@@ -29,25 +29,6 @@ from tkinter import Tk;
 from .utils import tagMusic, get_album_art, getLibraryXML, data;
 from iTunes_Music_Converter.progressFrame import progressFrame;
 
-class Counter(object):
-  '''A cross-thread counter object'''
-  def __init__(self):
-    self.__val  = 0;
-    self.__lock = Lock();
-  def increment(self):
-    with self.__lock:
-      self.__val += 1;
-  def value(self):
-    with self.__lock:
-      return self.__val;
-  def incVal(self):
-    with self.__lock:
-      self.__val += 1;
-      return self.__val;
-  def reset(self):
-    with self.__lock:
-      self.__val = 0;
-
 class iTunes_Music_Converter( object ):
   '''
   Name:
@@ -120,9 +101,9 @@ class iTunes_Music_Converter( object ):
         self.all_tracks.append( i );                                            # Append the track id to the all_tracks list
 
       
-    self.cnt       = Counter();                                                 # Set cnt to Counter class
     self.nTrack    = None;                                                      # Set nTracks to None
     self.process   = [];                                                        # Initialize list of processes
+    self.__cnt     = 0;                                                         # Set cnt to Counter class
     self.__Lock    = Lock();                                                    # Lock for downloading cover art
   ##############################################################################
   def convert(self, track_id = None):
@@ -135,11 +116,10 @@ class iTunes_Music_Converter( object ):
     if self.nTrack == 0:                                                        # If number of tracks is zero
       if self.gui: self.root.destroy();                                         # If verbose is set, destroy the root tkinter object
       return 1;                                                                 # return 1
-    self.cnt.reset();                                                           # Reset the count for cnt attribute
     if self.gui:
       self.progress.nTracks( self.nTrack );                                     # Set number of tracks to convert in the progress bar
     
-    thread = Thread(target = self._convert, args = (track_id,));                # Initialize thread to run _convert method
+    thread = Thread(target = self._convertMainLoop, args = (track_id,));        # Initialize thread to run _convert method
     thread.start();                                                             # Start the thread
 
     if self.gui:                                                                # If verbose is set
@@ -147,9 +127,10 @@ class iTunes_Music_Converter( object ):
     else:                                                                       # Else
       thread.join();                                                            # Just join the thread and wait for it to finish
   ##############################################################################
-  def _convert(self, track_id):
+  def _convertMainLoop(self, track_id):
     '''Function that iterates over tracks to convert them.'''
     t00 = time.time();                                                          # Get time for start of iteration over tracks
+    self.__cnt = 0;                                                             # Reset the count for cnt attribute
     for track in track_id:                                                      # Iterate over all tracks
       info = self.itunes_data['Tracks'][track];                                 # Get the information about the track
       proc = self._processChecker();                                            # Block to ensure there aren't too many process
@@ -270,17 +251,19 @@ class iTunes_Music_Converter( object ):
   ##############################################################################
   def _logFormat( self, info ):
     '''Set up string format for log messages.'''
-    cnt = self.cnt.incVal();                                                    # Get count of the track being processed
-    fmt = '{:>6} of {:>6} {:39.38}'
-    tmp = "";
-    if ('Album Artist' in info): 
-      tmp += info['Album Artist']+'/';
-    elif ('Artist'     in info): 
-      tmp+= info['Artist']+'/';
-    if ('Album'        in info): tmp+= info['Album'] +'/';
-    if ('Track Number' in info): tmp+= '{:02} '.format(info['Track Number']);
-    if ('Name'         in info): tmp+= info['Name'];
-    return fmt.format( cnt, self.nTrack, tmp ) + ' - {:21.20}';
+    with self.__Lock:                                                           # Acquire lock
+      self.__cnt += 1;                                                          # Increment then private counter
+      cnt = self.__cnt;                                                         # Set local cnt variable to value of private counter
+    fmt = '{:>6} of {:>6} {:39.38}';                                            # Initial format
+    tmp = "";                                                                   # Set up empty tmp string
+    if ('Album Artist' in info):                                                # If 'Album Artist' is in info
+      tmp += info['Album Artist']+'/';                                          # Add the 'Album Artist' to the tmp string
+    elif ('Artist'     in info):                                                # Else, if 'Artist' in info
+      tmp+= info['Artist']+'/';                                                 # Add the 'Artist' to the tmp string
+    if ('Album'        in info): tmp += info['Album'] +'/';                     # If 'Album' in info, add album to tmp
+    if ('Track Number' in info): tmp += '{:02} '.format(info['Track Number']);  # If 'Track Number' in info, format the track number and add to tmp string
+    if ('Name'         in info): tmp += info['Name'];                           # If 'Name' in info, add name to tmp string
+    return fmt.format( cnt, self.nTrack, tmp ) + ' - {:21.20}';                 # Return the format string
   ##############################################################################
   def _processChecker(self):
     '''Stop too many processes from running'''
