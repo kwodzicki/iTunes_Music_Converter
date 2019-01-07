@@ -24,7 +24,7 @@ from plistlib   import readPlist;                                               
 from subprocess import check_output, Popen, PIPE, STDOUT, DEVNULL;
 from threading  import Thread, Lock;
 from urllib.parse import unquote;
-from tkinter import Tk;
+from PyQt5.QtWidgets import QApplication
 
 from .utils import tagMusic, get_album_art, getLibraryXML, data;
 from iTunes_Music_Converter.progressFrame import progressFrame;
@@ -79,9 +79,8 @@ class iTunes_Music_Converter( object ):
       self.dest_dir = dest_dir;                                                 # Append forward slash to the end of the directory if one is not there
 
     if self.gui:                                                                # If verbose is set
-      self.root     = Tk();                                                     # Initialize a root window
+      self.root     = QApplication(['convert_music']);                          # Initialize a root window
       self.progress = progressFrame( self.root, self.nProc, self.dest_dir );    # Set up progress window
-      self.root.winfo_toplevel().title('convert_music');                        # Set the window title
     else:
       self.root     = None;
       self.progress = None;
@@ -123,7 +122,7 @@ class iTunes_Music_Converter( object ):
     thread.start();                                                             # Start the thread
 
     if self.gui:                                                                # If verbose is set
-      self.root.mainloop();                                                     # Start the tkinter main loop
+      self.root.exec_();                                                     # Start the tkinter main loop
     else:                                                                       # Else
       thread.join();                                                            # Just join the thread and wait for it to finish
   ##############################################################################
@@ -278,6 +277,7 @@ class iTunes_Music_Converter( object ):
             proc.join();                                                        # Join the process
           except:                                                               # On exception
             proc.communicate();                                                 # Communicate with process
+          time.sleep(1);
           return proc;                                                          # Return the handle of the finished process
     return None;                                                                # Return None
   ##############################################################################

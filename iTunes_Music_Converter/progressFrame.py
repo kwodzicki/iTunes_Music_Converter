@@ -1,5 +1,5 @@
-import tkinter as tk;
-from tkinter import ttk;
+from PyQt5.QtWidgets import QWidget, QFrame, QVBoxLayout, QGridLayout, QLabel, QProgressBar;
+from PyQt5 import QtCore;
 
 import re, time;
 import numpy as np;
@@ -19,46 +19,106 @@ def parseDuration( time ):
   time = time.split()[-1];
   return (np.asarray(time.split(':'), dtype = float) * convert).sum();
 
+def setGeometry( widget ):
+  widget.setGeometry( 0, 0, 200, widget.height() )
+
 ################################################################################
 ################################################################################
 ################################################################################
 ################################################################################
-class progressTrack( tk.Frame ):
-  maxVal  = 150;
-  prog    =  25;
-  elapsed = 0.0;
+class progressTrack( QFrame ):
+  maxVal   = 150;
+  prog     =  25;
+  elapsed  = 0.0;
+  progressUpdate = QtCore.pyqtSignal(int);
+  artist         = QtCore.pyqtSignal(str);
+  album          = QtCore.pyqtSignal(str);
+  track          = QtCore.pyqtSignal(str);
+  status         = QtCore.pyqtSignal(str);
+  
   def __init__(self, root, orient = None, mode = None):
-    tk.Frame.__init__(self, root);
-    self.configure(relief = 'groove', borderwidth = 2)
-    self.artist  = tk.StringVar();                                              # Initialize tkinter string variable for track artist
-    self.album   = tk.StringVar();                                              # Initialize tkinter string variable for track album
-    self.track   = tk.StringVar();                                              # Initialize tkinter string variable for track track
-    self.status  = tk.StringVar();                                              # Initialize tkinter string variable for status
+    QFrame.__init__(self);
+    self.setFrameStyle(QFrame.Raised);
+    self.setLineWidth(2);
+    
+#     self.configure(relief = 'groove', borderwidth = 2)
+#     self.setStyleSheet("border:1px; ")
     self.time    = None;                                                        # Initialize variable for computation time
     self.running = False;                                                       # Set running to False
 
-    artistLabel1 = tk.Label(self,text = 'Artist:');                             # Set up label for track artist
-    artistLabel2 = tk.Label(self,textvariable=self.artist,width=20,anchor='w'); # Set label to display track artist using the artist tkinter string var
+    artist1 = QLabel('Artist:');                             # Set up label for track artist
+    artist2 = QLabel(''); # Set label to display track artist using the artist tkinter string var
+    artist1.setAlignment( QtCore.Qt.AlignLeft );
+    artist2.setAlignment( QtCore.Qt.AlignLeft );
+    setGeometry( artist2 )
+    self.artist.connect(artist2.setText)
 
-    albumLabel1  = tk.Label(self,text='Album:');                                # Set up label for track album
-    albumLabel2  = tk.Label(self,textvariable=self.album,width=20,anchor='w');  # Set label to display album artist using the album tkinter string var
-
-    trackLabel1  = tk.Label(self,text='Track:');                                # Set up label for track name
-    trackLabel2  = tk.Label(self,textvariable=self.track,width=20,anchor='w');  # Set label to display track name using the track tkinter string var
-
-    self.progress = ttk.Progressbar(self, orient = orient, mode = mode);                                                                          # Initialize track progress bar
-    self.progress['maximum'] = self.maxVal;                                     # Set maximum value of the track progress bar
-  
-    status = tk.Label(self, textvariable = self.status);                        # Set up label for status
+    album1  = QLabel('Album:');                                # Set up label for track album
+    album2  = QLabel('');  # Set label to display album artist using the album tkinter string var
+    album1.setAlignment( QtCore.Qt.AlignLeft );
+    album2.setAlignment( QtCore.Qt.AlignLeft );
+    setGeometry( album2 )
+    self.album.connect(album2.setText)
     
-    artistLabel1.grid(  row=0, column=0, padx=5, sticky='w'  );                 # Place elements in grid
-    artistLabel2.grid(  row=0, column=1, padx=5, sticky='w'  );                 # Place elements in grid
-    albumLabel1.grid(   row=1, column=0, padx=5, sticky='w'  );                 # Place elements in grid
-    albumLabel2.grid(   row=1, column=1, padx=5, sticky='w'  );                 # Place elements in grid
-    trackLabel1.grid(   row=2, column=0, padx=5, sticky='w'  );                 # Place elements in grid
-    trackLabel2.grid(   row=2, column=1, padx=5, sticky='w'  );                 # Place elements in grid
-    self.progress.grid( row=3, column=0, padx=5, sticky='we', columnspan=2 );   # Place elements in grid
-    status.grid(        row=4, column=0, padx=5, sticky='we', columnspan=2 );   # Place elements in grid
+    track1  = QLabel('Track:');                                # Set up label for track name
+    track2  = QLabel('');  # Set label to display track name using the track tkinter string var
+    track1.setAlignment( QtCore.Qt.AlignLeft );
+    track2.setAlignment( QtCore.Qt.AlignLeft );
+    setGeometry( track2 )
+    self.track.connect(track2.setText);
+
+    self.progress = QProgressBar();                                                                          # Initialize track progress bar
+    self.progress.setMaximum(self.maxVal);                                      # Set maximum value of the track progress bar
+    self.progressUpdate.connect( self.progress.setValue );
+
+    status = QLabel('');                        # Set up label for status
+    self.status.connect(status.setText);
+        
+    layout = QGridLayout();
+    layout.addWidget(artist1,   0, 0)
+    layout.addWidget(artist2,   0, 1)
+    layout.addWidget(album1,    1, 0)
+    layout.addWidget(album2,    1, 1)
+    layout.addWidget(track1,    2, 0)
+    layout.addWidget(track2,    2, 1)
+    layout.addWidget(self.progress, 3, 0, 1, 2);
+    layout.addWidget(status,   4, 0, 1, 2);    
+
+#     artistLabel = QLabel('Artist:');                             # Set up label for track artist
+#     self.artist = QLabel('' ); # Set label to display track artist using the artist tkinter string var
+# 
+#     albumLabel  = QLabel('Album:');                                # Set up label for track album
+#     self.album  = QLabel('');  # Set label to display album artist using the album tkinter string var
+# 
+#     trackLabel  = QLabel('Track:');                                # Set up label for track name
+#     self.track  = QLabel('');  # Set label to display track name using the track tkinter string var
+# 
+#     self.progress = QProgressBar();                                                                          # Initialize track progress bar
+#     self.progress.setMaximum(self.maxVal);                                      # Set maximum value of the track progress bar
+#   
+#     self.status = QLabel('');                        # Set up label for status
+#     
+#     layout = QGridLayout();
+#     layout.addWidget(artistLabel,   0, 0)
+#     layout.addWidget(self.artist,   0, 1)
+#     layout.addWidget(albumLabel,    1, 0)
+#     layout.addWidget(self.album,    1, 1)
+#     layout.addWidget(trackLabel,    2, 0)
+#     layout.addWidget(self.track,    2, 1)
+#     layout.addWidget(self.progress, 3, 0, 1, 2);
+#     layout.addWidget(self.status,   4, 0, 1, 2);    
+
+    layout.setVerticalSpacing(2);
+    self.setLayout( layout );
+    self.show();
+#     artistLabel1.grid(  row=0, column=0, padx=5, sticky='w'  );                 # Place elements in grid
+#     artistLabel2.grid(  row=0, column=1, padx=5, sticky='w'  );                 # Place elements in grid
+#     albumLabel1.grid(   row=1, column=0, padx=5, sticky='w'  );                 # Place elements in grid
+#     albumLabel2.grid(   row=1, column=1, padx=5, sticky='w'  );                 # Place elements in grid
+#     trackLabel1.grid(   row=2, column=0, padx=5, sticky='w'  );                 # Place elements in grid
+#     trackLabel2.grid(   row=2, column=1, padx=5, sticky='w'  );                 # Place elements in grid
+#     self.progress.grid( row=3, column=0, padx=5, sticky='we', columnspan=2 );   # Place elements in grid
+#     status.grid(        row=4, column=0, padx=5, sticky='we', columnspan=2 );   # Place elements in grid
   ##############################################################################
   def updateInfo(self, info):
     '''
@@ -69,22 +129,23 @@ class progressTrack( tk.Frame ):
     '''
     track = '';                                                                 # Initialize track to empty string
     if ('Album Artist' in info):                                                # If 'Album Artist' is a key in the info dictionary
-      self.artist.set( info['Album Artist'] );                                  # Update the artist tkinter string var
+      self.artist.emit( info['Album Artist'] );                              # Update the artist tkinter string var
     elif ('Artist'     in info):                                                # Else, if 'Artist' is a key in the info dictionary
-      self.artist.set( info['Artist'] );                                        # Update the artist tkinter string var
+      self.artist.emit( info['Artist'] );                                    # Update the artist tkinter string var
     else:                                                                       # Else
-      self.artist.set( '' );                                                    # Update the artist tkinter string var to empty string
+      self.artist.emit( '' );                                                # Update the artist tkinter string var to empty string
     
     if ('Album'        in info):                                                # If 'Album' is a key in the info dictionary
-      self.album.set( info['Album'] );                                          # Update the album tkinter string var
+      self.album.emit( info['Album'] );                                      # Update the album tkinter string var
     else:                                                                       # Else
-      self.album.set( '' );                                                     # Update the album tkinter string var to empty string
+      self.album.emit( '' );                                                 # Update the album tkinter string var to empty string
 
     if ('Track Number' in info): track += '{:02} '.format(info['Track Number']);# If 'Track Number' is key in the info dictionary, append the track number (with formatting) to the track variable
     if ('Name'         in info): track += info['Name'];                         # if 'Name' is a key in the info dictionary, append track name to track variable
-    self.track.set( track );                                                    # Set the track tkinter string var using the track variable
-    self.status.set( '' );                                                      # Set status to empty
-    self.progress['value'] = 0;                                                 # Set the progress bar to zero (0) progress
+    self.track.emit( track );                                                # Set the track tkinter string var using the track variable
+    self.status.emit( '' );                                                  # Set status to empty
+    self.progressUpdate.emit( 0 );                                                # Set the progress bar to zero (0) progress
+
   ##############################################################################
   def updateStatus(self, text, prog = False, finish = False):
     '''
@@ -96,22 +157,22 @@ class progressTrack( tk.Frame ):
       prog   : If set to True, will increment the progress bar
       finish : If set to True, will set progress bar to done
     '''
-    self.status.set( text );                                                    # Update the status text
+    self.status.emit( text );                                                # Update the status text
     if prog:                                                                    # If prog is True
-      self.progress['value'] = self.progress['value'] + self.prog;              # Update the progress bar
+      self.progressUpdate.emit( self.progress.value() + self.prog );              # Update the progress bar
     if finish:
-      self.progress['value'] = self.maxVal;                                     # Update the progress bar
+      self.progressUpdate.emit( self.maxVal )                                     # Update the progress bar
       self.time  = time.time() - self.time;                                     # Set time to processing time
   ##############################################################################
   def reset(self):
     '''
     Method to reset all values in the frame
     '''
-    self.progress['value'] = 0;                                                 # Set progress to zero
-    self.artist.set('');                                                        # Set artist to empty string
-    self.album.set( '');                                                        # Set album to empty string
-    self.track.set( '');                                                        # Set track to empty string
-    self.status.set('');                                                        # Set status to empty string
+    self.progressUpdate.emit( 0 );                                                # Set progress to zero
+    self.artist.emit('');                                                    # Set artist to empty string
+    self.album.emit( '');                                                    # Set album to empty string
+    self.track.emit( '');                                                    # Set track to empty string
+    self.status.emit('');                                                    # Set status to empty string
   ##############################################################################
   def setBar(self, info):
     '''
@@ -141,8 +202,8 @@ class progressTrack( tk.Frame ):
     Method for setting bar to 'Finished'. 
     Bar is intended to be freed by the progressFrame class.
     '''
-    self.status.set('Finished!');                                               # Update the text for the bar
-    self.progress['value'] = self.maxVal;                                       # Set progress bar to complete
+    self.status.emit('Finished!');                                           # Update the text for the bar
+    self.progressUpdate.emit( self.maxVal );                                      # Set progress bar to complete
     self.time  = time.time() - self.time;                                       # Set time to processing time
   ##############################################################################
   def conversion(self, proc):
@@ -155,7 +216,7 @@ class progressTrack( tk.Frame ):
               stdout must be sent to subprocess.PIPE and
               stderr must be sent to subprocess.STDOUT.
     '''
-    startVal = self.progress['value'];                                          # Current value of the progress bar
+    startVal = self.progress.value();                                           # Current value of the progress bar
     duration = None;                                                            # Set file duration to None;
     time     = 0.0;                                                             # Set current file time to None;
     progress = 0;                                                               # Set progress to zero (0)
@@ -176,19 +237,23 @@ class progressTrack( tk.Frame ):
           if test:                                                              # If time patter found
             time = parseTime( line[test.start():test.end()] );                  # Parse the time into seconds          
             progress = (time / duration) * 100.0                                # Set progress to percentage of time
-            self.progress['value'] = startVal + progress;                       # Set progress bar position to initial position plus progress
+            self.progressUpdate.emit( startVal + progress );                      # Set progress bar position to initial position plus progress
         line = b'';                                                             # Set line back to empty byte line
-    self.progress['value'] = startVal + 100.0;                                  # Make sure progress bar in correct position
+    self.progressUpdate.emit( startVal + 100 );                                   # Make sure progress bar in correct position
 
 
 ################################################################################
 ################################################################################
 ################################################################################
 ################################################################################
-class progressFrame( tk.Frame ):
-  orient  = 'horizontal';
-  mode    = 'determinate';
-  elapsed = 0.0
+class progressFrame( QFrame ):
+  orient      = 'horizontal';
+  mode        = 'determinate';
+  elapsed     = 0.0
+  progressUpdate = QtCore.pyqtSignal(int);
+  progressMax    = QtCore.pyqtSignal(int);
+  tRemainSTR     = QtCore.pyqtSignal(str);
+  tElapsSTR      = QtCore.pyqtSignal(str);
   def __init__(self, root, nprocs, dst_dir):
     '''
     Inputs:
@@ -196,33 +261,39 @@ class progressFrame( tk.Frame ):
       nprocs  : Number of process running simultaneously
       dst_dir : The output directory for all files
     '''
-    tk.Frame.__init__(self, root);
+    QFrame.__init__(self);
 
-    self.tRemainSTR = tk.StringVar();                                           # tkinter string variable for the time remaining
-    self.tElapsSTR  = tk.StringVar();
     self.tRemain    = timedelta(seconds = -1.0);
     self.refTime    = None;
     self.bars       = [None] * nprocs;                                          # List for track progress bar instances
     self.thread     = None;                                                     # Attribute to store thread handle for time remaining updater
     self.getLock    = Lock();                                                   # Threading lock, used in freeBar
     self.freeLock   = Lock();
-    frame     = tk.Frame( self );                                               # Frame for the overall progress
-    outLabel  = tk.Label( frame, text = 'Output: {}'.format(dst_dir) );         # Label for the output directory
-    progLabel = tk.Label( frame, text = 'Overall Progress');                    # Label for the progress bar
-    self.progress = ttk.Progressbar(frame, orient=self.orient, mode=self.mode);                                                                          # Progress bar
-    self.progress['value'] = 0;                                                 # Initialize value to zero (0)
 
-    tRemainLabel = tk.Label( frame, textvariable = self.tRemainSTR );           # Label for time remaining
-    tElapsLabel  = tk.Label( frame, textvariable = self.tElapsSTR  );           # Label for time remaining
-    outLabel.pack();                                                            # Pack the output dir label
-    progLabel.pack();                                                           # Pack the progress bar label
-    self.progress.pack( fill = 'x', expand = True);                             # Pack the progress bar
-    tRemainLabel.pack();                                                        # Pack label for time remaining
-    tElapsLabel.pack();                                                         # Pack label for time remaining
-    frame.pack();                                                               # Pack the frame
+    outLabel        = QLabel( 'Output: {}'.format(dst_dir) );         # Label for the output directory
+    progLabel       = QLabel( 'Overall Progress');                    # Label for the progress bar
+    tRemainSTR = QLabel( '' )                                          # tkinter string variable for the time remaining
+    tElapsSTR  = QLabel( '' );
+    self.tRemainSTR.connect( tRemainSTR.setText )
+    self.tElapsSTR.connect(  tElapsSTR.setText )
+
+
+    self.progress = QProgressBar( );                                                                          # Progress bar
+    self.progress.setValue( 0 );                                                # Initialize value to zero (0)
+    self.progressMax.connect( self.progress.setMaximum );
+    self.progressUpdate.connect( self.progress.setValue );
+    
+    self.layout = QVBoxLayout();
+    self.layout.setSpacing(2);
+    self.layout.addWidget( outLabel  );                                                            # Pack the output dir label
+    self.layout.addWidget( progLabel );                                                           # Pack the progress bar label
+    self.layout.addWidget( self.progress );                             # Pack the progress bar
+    self.layout.addWidget( tRemainSTR );                                                        # Pack label for time remaining
+    self.layout.addWidget( tElapsSTR );                                                         # Pack label for time remaining
     
     self._addProgress( nprocs );                                                # Create all track progress bar instances
-    self.pack();                                                                # Pack self frame
+    self.setLayout( self.layout )
+    self.show();
   ##############################################################################
   def nTracks(self, ntracks):
     '''
@@ -231,7 +302,7 @@ class progressFrame( tk.Frame ):
     Inputs:
       ntracks : Number of tracks that are going to be converted
     '''
-    self.progress['maximum'] = ntracks;                                         # Set maximum value of progress bar
+    self.progressMax.emit( ntracks );                                           # Set maximum value of progress bar
   ##############################################################################
   def _addProgress(self, n):
     '''
@@ -242,7 +313,7 @@ class progressFrame( tk.Frame ):
     '''
     for i in range(n):                                                          # Iterate over number of processes allowed at one time
       self.bars[i] = progressTrack(self, orient=self.orient, mode=self.mode);                                                                        # Initiate a progressTrack tk.Frame class
-      self.bars[i].pack(padx = 5, pady = 5);                                    # Pack the class in the main window
+      self.layout.addWidget( self.bars[i] );                                    # Pack the class in the main window
   ##############################################################################
   def getBar(self, info):
     '''
@@ -278,10 +349,11 @@ class progressFrame( tk.Frame ):
     self.freeLock.acquire();                                                    # Acquire lock so this method cannot be running multiple times at once
     for i in range( len(self.bars) ):                                           # Iterate over all progressTrack instances
       if self.bars[i] == bar:                                                   # If the given bar is equal to that input
+        n = self.progress.value() + 1;                                          # Increment number of tracks converted
+        self.progressUpdate.emit( n );                                          # Update number of tracks converted
         self.elapsed += bar.time;                                               # Time difference between now and when free bar was found (should be roughly how long it took for conversion to occur);
-        self.progress['value'] += 1;                                            # Increment number of tracks converted
-        avgTime      = self.elapsed / self.progress['value'];                   # Compute average time per file
-        nRemain      = (self.progress['maximum'] - self.progress['value']);     # Number of tracks remaining
+        avgTime      = self.elapsed / n;                                        # Compute average time per file
+        nRemain      = (self.progress.maximum() - self.progress.value());       # Number of tracks remaining
         self.tRemain = timedelta(seconds = round(avgTime * nRemain));           # Compute remaining time based on number of tracks left and average process time
         bar.freeBar();                                                          # Free the bar
     self.freeLock.release();                                                    # Release the lock
@@ -293,12 +365,12 @@ class progressFrame( tk.Frame ):
     Inputs:
       None.
     '''
-    while self.progress['value'] < self.progress['maximum']:                    # While the # of tracks processed is < # of tracks
+    while self.progress.value() < self.progress.maximum():                    # While the # of tracks processed is < # of tracks
       if self.tRemain.total_seconds() > 0.0:                                    # If the remaining time is greater than zero (0) seconds
-        self.tRemainSTR.set( 'Time Remaining: {}'.format( self.tRemain ) );     # Set the tRemainSTR tkinter string variable using the tRemain timedelta variable
+        self.tRemainSTR.emit( 'Time Remaining: {}'.format( self.tRemain ) ); # Set the tRemainSTR tkinter string variable using the tRemain timedelta variable
         self.tRemain -= timedelta( seconds = 1.0 );                             # Decrement the tRemain timedelta by one (1) second
       time.sleep(1.0);                                                          # Sleep for one (1) second
-    self.tRemainSTR.set( 'Done!' );                                             # Set tRemainSTR to 'Done!'
+    self.tRemainSTR.emit( 'Done!' );                                         # Set tRemainSTR to 'Done!'
   ##############################################################################
   def __timeElapsThread(self):
     '''
@@ -308,9 +380,9 @@ class progressFrame( tk.Frame ):
       None.
     '''
     t0 = time.time();                                                           # Start time of thread
-    while self.progress['value'] < self.progress['maximum']:                    # While the # of tracks processed is < # of tracks
+    while self.progress.value() < self.progress.maximum():                      # While the # of tracks processed is < # of tracks
       t = time.strftime('%H:%M:%S', time.gmtime( time.time() - t0 ) );          # Get time elapsed since thread start and format as HH:MM:SS
-      self.tElapsSTR.set( 'Time Elapsed: {}'.format( t ) );                     # Set the tRemainSTR tkinter string variable using the tRemain timedelta variable
+      self.tElapsSTR.emit( 'Time Elapsed: {}'.format( t ) );                 # Set the tRemainSTR tkinter string variable using the tRemain timedelta variable
       time.sleep(1.0);                                                          # Sleep for one (1) second
     
         
